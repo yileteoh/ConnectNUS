@@ -9,13 +9,13 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const handleSignUp = () => {
-    // 1. NUS Email Verification [cite: 54, 192]
-    if (!email.endsWith('@u.nus.edu') && !email.endsWith('@nus.edu.sg')) {
+    // 1. NUS Email Verification
+    if !email.endsWith('@u.nus.edu') {
       Alert.alert("Invalid Email", "Please use your NUS student email.");
       return;
     }
 
-    // 2. Firebase Registration Logic [cite: 122, 123]
+    // 2. Firebase Registration Logic
     createUserWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
         Alert.alert("Success", "PoC: Account created for " + userCredential.user.email);
