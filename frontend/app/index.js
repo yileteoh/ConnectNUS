@@ -1,27 +1,31 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, SafeAreaView } from 'react-native';
-// Ensure firebaseConfig.js is in the 'frontend' folder (one level up from this file)
 import { auth } from '../firebaseConfig'; 
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useRouter } from 'expo-router';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter(); // Initialize router for navigation
 
-  const handleSignUp = () => {
-    // 1. NUS Email Verification
-    if !email.endsWith('@u.nus.edu') {
-      Alert.alert("Invalid Email", "Please use your NUS student email.");
+  const handleLogin = () => {
+    // 1. Basic validation
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password.");
       return;
     }
 
-    // 2. Firebase Registration Logic
-    createUserWithEmailAndPassword(auth, email, password)
+    // 2. Login Logic
+    signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
-        Alert.alert("Success", "PoC: Account created for " + userCredential.user.email);
+        console.log("Logged in:", userCredential.user.email);
+        // 3. Navigate to the Home page after successful login
+        router.replace('/home'); 
       })
       .catch((error) => {
-        Alert.alert("Registration Error", error.message);
+        // This will trigger if the user doesn't exist or password is wrong
+        Alert.alert("Login Failed", error.message);
       });
   };
 
@@ -55,11 +59,11 @@ export default function LoginScreen() {
           />
         </View>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleSignUp}>
+        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.buttonText}>Login →</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/register')}>
           <Text style={styles.noAccountText}>Oops, I don't have an account</Text>
         </TouchableOpacity>
 
