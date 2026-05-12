@@ -52,7 +52,7 @@ export default function LoginScreen() {
           <Text style={styles.label}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="********"
+            placeholder="******"
             value={password}
             onChangeText={setPassword}
             secureTextEntry

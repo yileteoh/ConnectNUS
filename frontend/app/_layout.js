@@ -7,6 +7,10 @@ export default function Layout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="home" />
       <Stack.Screen name="register" />
+      <Stack.Screen name="event" />
+      <Stack.Screen name="forum" />
+      <Stack.Screen name="buddy" />
+      <Stack.Screen name="profile" />
     </Stack>
   );
 }

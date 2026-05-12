@@ -10,8 +10,10 @@ import {
   Image
 } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
+  const router = useRouter(); // Initialize router for navigation
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -157,23 +159,22 @@ export default function HomeScreen() {
           <Text style={styles.activeNavText}>Home</Text>
         </TouchableOpacity>
 
-        {/* Changed from Study to Event per user request */}
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/event')}>
           <MaterialIcons name="event" size={24} color="#666" />
           <Text style={styles.navText}>Event</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/forum')}>
           <Ionicons name="chatbubbles-outline" size={24} color="#666" />
           <Text style={styles.navText}>Forum</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/buddy')}>
           <Ionicons name="person-add-outline" size={24} color="#666" />
           <Text style={styles.navText}>Buddy</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/profile')}>
           <Ionicons name="person-outline" size={24} color="#666" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
