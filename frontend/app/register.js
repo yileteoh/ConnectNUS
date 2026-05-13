@@ -4,6 +4,9 @@ import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, SafeAreaVie
 import { auth } from '../firebaseConfig'; 
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
+
+const BASE_URL = Constants.expoConfig.extra.backendUrl;
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -25,7 +28,8 @@ export default function RegisterScreen() {
         // 3. Sync with Node.js Backend
         // YOUR IP ADDRESS
         try {
-          await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/register`, {
+          console.log('Backend URL:', BASE_URL);
+          await fetch(`${BASE_URL}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: user.email, uid: user.uid }),
