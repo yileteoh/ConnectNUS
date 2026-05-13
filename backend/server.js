@@ -43,5 +43,5 @@ app.post('/api/register', async (req, res) => {
 
 // YOUR IP ADDRESS
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Network URL: http://10.95.72.215:${PORT}`);
+    console.log(`Network URL: http://10.18.95.140:${PORT}`);
 });

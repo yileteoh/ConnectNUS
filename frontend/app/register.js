@@ -25,7 +25,7 @@ export default function RegisterScreen() {
         // 3. Sync with Node.js Backend
         // YOUR IP ADDRESS
         try {
-          await fetch('http://10.95.72.215:3000/api/register', {
+          await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: user.email, uid: user.uid }),
