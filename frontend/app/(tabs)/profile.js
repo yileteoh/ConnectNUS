@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Header from '../../components/Header';
 
 export default function ProfileScreen() {
   const router = useRouter(); // Initialize router for navigation
@@ -18,25 +19,9 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.safeArea}>
       
       {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image 
-            source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
-            style={styles.headerAvatar} 
-          />
-          <Text style={styles.headerTitle}>ConnectNUS</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <Ionicons name="notifications-outline" size={24} color="#002D5B" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <Ionicons name="settings-outline" size={24} color="#002D5B" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Header />
 
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 110 }}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
         
         {/* Main Profile Info Card */}
         <View style={styles.profileCard}>
@@ -153,42 +138,6 @@ export default function ProfileScreen() {
 
       </ScrollView>
 
-      {/* Custom Bottom Navigation Bar */}
-      <View style={styles.bottomNav}>
-        
-        {/* Navigate to Home */}
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/home')}>
-          <Ionicons name="home-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-
-        {/* Navigate to Event */}
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/event')}>
-          <Ionicons name="people-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Event</Text>
-        </TouchableOpacity>
-
-        {/* Navigate to Forum */}
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/forum')}>
-          <Ionicons name="chatbubbles-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Forum</Text>
-        </TouchableOpacity>
-
-        {/* Navigate to Buddy */}
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/buddy')}>
-          <Ionicons name="person-add-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Buddy</Text>
-        </TouchableOpacity>
-
-        {/* Active Tab: Profile */}
-        <TouchableOpacity style={styles.navItem}>
-          <View style={styles.activeNavIconBg}>
-            <Ionicons name="person" size={20} color="#FFF" />
-          </View>
-          <Text style={styles.activeNavText}>Profile</Text>
-        </TouchableOpacity>
-
-      </View>
     </SafeAreaView>
   );
 }
@@ -203,36 +152,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   
-  /* Header Styles */
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  headerAvatar: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    marginRight: 10 
-  },
-  headerTitle: { 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    color: '#002D5B' 
-  },
-  headerRight: {
-    flexDirection: 'row'
-  },
-  headerIconBtn: {
-    marginLeft: 15
-  },
-
   /* Main Profile Card */
   profileCard: {
     backgroundColor: '#FFFFFF',
@@ -496,42 +415,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15
-  },
-
-  /* Bottom Navigation Styles */
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 85,
-    backgroundColor: '#F8F9FA',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-start',
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#EAEAEA'
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  activeNavIconBg: {
-    backgroundColor: '#002D5B',
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 4
-  },
-  activeNavText: {
-    fontSize: 12,
-    color: '#002D5B',
-    fontWeight: '700'
-  },
-  navText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    fontWeight: '500'
   }
+
 });

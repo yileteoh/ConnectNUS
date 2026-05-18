@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, SafeAreaView, Image } from 'react-native';
 import { auth } from '../firebaseConfig'; 
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'expo-router';
@@ -33,7 +33,11 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconPlaceholder}>
-           <Text style={{fontSize: 40}}>🎓</Text>
+          <Image 
+            source={require('../assets/icon.png')} // Path to icon
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
         
         <Text style={styles.welcomeText}>Welcome back!</Text>
@@ -78,9 +82,11 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 30 },
-  iconPlaceholder: { alignSelf: 'center', backgroundColor: '#001F3F', padding: 20, borderRadius: 20, marginBottom: 20 },
+  iconPlaceholder: { alignSelf: 'center', backgroundColor: '#e6e6e6', paddingTop: 0, paddingBottom: 10, paddingLeft: 5, paddingRight: 5, borderRadius: 20, marginBottom: 20 },
+  logoImage: { width: 110, height: 110 },
   welcomeText: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', color: '#1A1A1A' },
   subText: { fontSize: 16, textAlign: 'center', color: '#666', marginBottom: 30 },
+  inputContainer: { marginBottom: 10 },
   label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 5 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#D1D5DB', padding: 15, borderRadius: 10, marginBottom: 20 },
   loginButton: { backgroundColor: '#001F3F', padding: 18, borderRadius: 10, alignItems: 'center' },

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Header from '../../components/Header';
 
 // Pass the 'navigation' prop to enable routing to other screens
 export default function ForumScreen() {
@@ -20,20 +21,9 @@ export default function ForumScreen() {
     <SafeAreaView style={styles.safeArea}>
       
       {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image 
-            source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
-            style={styles.profileImage} 
-          />
-          <Text style={styles.headerTitle}>ConnectNUS</Text>
-        </View>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color="#002D5B" />
-        </TouchableOpacity>
-      </View>
+      <Header title="Forum" />
 
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 110 }}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
         
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -217,42 +207,6 @@ export default function ForumScreen() {
         <Ionicons name="add" size={30} color="#FFF" />
       </TouchableOpacity>
 
-      {/* Custom Bottom Navigation Bar */}
-      <View style={styles.bottomNav}>
-        
-        {/* Link to Home Screen */}
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/home')}>
-          <Ionicons name="home-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-
-        {/* Link to Event Screen */}
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/event')}>
-          <Ionicons name="people-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Event</Text>
-        </TouchableOpacity>
-
-        {/* Active Tab: Forum */}
-        <TouchableOpacity style={styles.navItem}>
-          <View style={styles.activeNavIconBg}>
-            <Ionicons name="chatbubbles" size={20} color="#FFF" />
-          </View>
-          <Text style={styles.activeNavText}>Forum</Text>
-        </TouchableOpacity>
-
-        {/* Link to Buddy Screen */}
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/buddy')}>
-          <Ionicons name="person-add-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Buddy</Text>
-        </TouchableOpacity>
-
-        {/* Link to Profile Screen */}
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/profile')}>
-          <Ionicons name="person-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-
-      </View>
     </SafeAreaView>
   );
 }
@@ -267,30 +221,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   
-  /* Header Styles */
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  profileImage: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    marginRight: 10 
-  },
-  headerTitle: { 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    color: '#002D5B' 
-  },
-
   /* Search Bar */
   searchContainer: {
     flexDirection: 'row',
@@ -474,7 +404,7 @@ const styles = StyleSheet.create({
   /* Floating Action Button */
   fab: {
     position: 'absolute',
-    bottom: 100, // Above bottom nav
+    bottom: 20, // Above bottom nav
     right: 20,
     width: 56,
     height: 56,
@@ -487,42 +417,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5
-  },
-
-  /* Bottom Navigation Styles */
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 85,
-    backgroundColor: '#F8F9FA',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-start',
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#EAEAEA'
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  activeNavIconBg: {
-    backgroundColor: '#002D5B',
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 4
-  },
-  activeNavText: {
-    fontSize: 12,
-    color: '#002D5B',
-    fontWeight: '700'
-  },
-  navText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    fontWeight: '500'
   }
 });

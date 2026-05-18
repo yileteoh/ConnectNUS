@@ -29,7 +29,7 @@ export default function RegisterScreen() {
         // YOUR IP ADDRESS
         try {
           console.log('Backend URL:', BASE_URL);
-          await fetch(`${BASE_URL}/register`, {
+          await fetch(`${BASE_URL}/api/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: user.email, uid: user.uid }),

@@ -11,26 +11,18 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Header from '../../components/Header';
 
 export default function HomeScreen() {
   const router = useRouter(); // Initialize router for navigation
   return (
+    
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-        
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Image 
-              source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} 
-              style={styles.profileImage} 
-            />
-            <Text style={styles.headerTitle}>ConnectNUS</Text>
-          </View>
-          <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={24} color="#003D7C" />
-          </TouchableOpacity>
-        </View>
+
+      {/* Header Section */}
+      <Header title="Home" />
+
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
 
         {/* Greeting Section */}
         <View style={styles.greetingSection}>
@@ -150,35 +142,6 @@ export default function HomeScreen() {
 
       </ScrollView>
 
-      {/* Custom Bottom Navigation Bar */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <View style={styles.activeNavIconBg}>
-            <Ionicons name="home" size={20} color="#FFF" />
-          </View>
-          <Text style={styles.activeNavText}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/event')}>
-          <MaterialIcons name="event" size={24} color="#666" />
-          <Text style={styles.navText}>Event</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/forum')}>
-          <Ionicons name="chatbubbles-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Forum</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/buddy')}>
-          <Ionicons name="person-add-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Buddy</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/profile')}>
-          <Ionicons name="person-outline" size={24} color="#666" />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -193,29 +156,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20 
   },
   
-  /* Header Styles */
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    paddingVertical: 15,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  profileImage: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    marginRight: 12 
-  },
-  headerTitle: { 
-    fontSize: 22, 
-    fontWeight: '700', 
-    color: '#002D5B' 
-  },
-
   /* Greeting Styles */
   greetingSection: {
     marginTop: 10,
@@ -413,40 +353,4 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
 
-  /* Bottom Navigation Styles */
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 85,
-    backgroundColor: '#F8F9FA',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-start',
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#EAEAEA'
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  activeNavIconBg: {
-    backgroundColor: '#002D5B',
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 4
-  },
-  activeNavText: {
-    fontSize: 12,
-    color: '#002D5B',
-    fontWeight: '700'
-  },
-  navText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    fontWeight: '500'
-  }
 });
