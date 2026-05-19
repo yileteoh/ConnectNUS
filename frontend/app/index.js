@@ -11,7 +11,7 @@ export default function LoginScreen() {
 
   const handleLogin = () => {
     // 1. Basic validation
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       Alert.alert("Error", "Please enter both email and password.");
       return;
     }
@@ -19,13 +19,29 @@ export default function LoginScreen() {
     // 2. Login Logic
     signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
-        console.log("Logged in:", userCredential.user.email);
-        // 3. Navigate to the Home page after successful login
-        router.replace('/home'); 
+        console.log("Logged in:", userCredential.user.email); 
       })
       .catch((error) => {
-        // This will trigger if the user doesn't exist or password is wrong
-        Alert.alert("Login Failed", error.message);
+        // Default fallback for rare errors
+        let errorMessage = error.message; 
+
+        // Handle the most common login issues cleanly
+        switch (error.code) {
+          case 'auth/invalid-credential':
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+            // Group these together for security (prevent email enumeration)
+            errorMessage = "Incorrect email or password. Please try again.";
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = "Your account has been temporarily disabled due to too many failed attempts. Please try again later.";
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = "Network error. Please check your internet connection and try again.";
+            break;
+        }
+        
+        Alert.alert("Login Failed", errorMessage);
       });
   };
 
@@ -56,7 +72,7 @@ export default function LoginScreen() {
           <Text style={styles.label}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="******"
+            placeholder="********"
             value={password}
             onChangeText={setPassword}
             secureTextEntry

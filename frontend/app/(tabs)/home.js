@@ -12,6 +12,7 @@ import {
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Header from '../../components/Header';
+import { auth } from '../../firebaseConfig';
 
 export default function HomeScreen() {
   const router = useRouter(); // Initialize router for navigation
@@ -26,7 +27,9 @@ export default function HomeScreen() {
 
         {/* Greeting Section */}
         <View style={styles.greetingSection}>
-          <Text style={styles.welcomeTitle}>Hi, NUSSTU!</Text>
+          <Text style={styles.welcomeTitle}>
+            Hi, {auth.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Student'}!
+          </Text>
           <Text style={styles.subTitle}>What are you looking for today?</Text>
         </View>
 

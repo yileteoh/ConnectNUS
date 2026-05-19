@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, SafeAreaView } from 'react-native';
 import { auth } from '../firebaseConfig'; 
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 
@@ -15,18 +15,23 @@ export default function RegisterScreen() {
 
   const handleSignUp = () => {
     // 1. NUS Email Verification
-    if (!email.endsWith('@u.nus.edu')) {
+    const nusEmailRegex = /^[eE]\d{7}@u\.nus\.edu$/;
+    if (!nusEmailRegex.test(email.trim())) {
       Alert.alert("Invalid Email", "Please use your NUS student email.");
       return;
     }
 
+    if (password.length < 8) {
+      Alert.alert("Weak Password", "Password should be at least 8 characters.");
+      return;
+    }
+
     // 2. Firebase Registration
-    createUserWithEmailAndPassword(auth, email, password)
+    createUserWithEmailAndPassword(auth, email.trim(), password)
       .then(async (userCredential) => {
         const user = userCredential.user;
 
         // 3. Sync with Node.js Backend
-        // YOUR IP ADDRESS
         try {
           console.log('Backend URL:', BASE_URL);
           await fetch(`${BASE_URL}/api/register`, {
@@ -35,15 +40,37 @@ export default function RegisterScreen() {
             body: JSON.stringify({ email: user.email, uid: user.uid }),
           });
 
-          Alert.alert("Success", "Account created and synced to backend!");
-          router.replace('/'); // Go back to login screen
+          await signOut(auth);
+
+          Alert.alert(
+            "Account Created", 
+            "Your account has been successfully created!"
+          );
+          
+          router.replace('/');
+
         } catch (error) {
           console.log("Backend Sync Error:", error);
           Alert.alert("Partial Success", "Account created, but backend notification failed.");
         }
       })
       .catch((error) => {
-        Alert.alert("Registration Error", error.message);
+        // Default to the raw Firebase message for uncommon errors
+        let errorMessage = error.message;
+
+        // Override common error codes with clean, user-friendly messages
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = "This email is already registered. Please login instead.";
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = "Network error. Please check your internet connection and try again.";
+            break;
+          case 'auth/invalid-email':
+            errorMessage = "The email address is badly formatted.";
+            break;
+        }
+        Alert.alert("Registration Error", errorMessage);
       });
   };
 
@@ -65,7 +92,7 @@ export default function RegisterScreen() {
         <Text style={styles.label}>Password</Text>
         <TextInput
           style={styles.input}
-          placeholder="Min 6 characters"
+          placeholder="Min 8 characters"
           value={password}
           onChangeText={setPassword}
           secureTextEntry

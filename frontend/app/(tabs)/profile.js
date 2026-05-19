@@ -12,14 +12,17 @@ import {
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Header from '../../components/Header';
+import { auth } from '../../firebaseConfig'; 
+import { signOut } from 'firebase/auth';
 
 export default function ProfileScreen() {
   const router = useRouter(); // Initialize router for navigation
+
   return (
     <SafeAreaView style={styles.safeArea}>
       
       {/* Header Section */}
-      <Header />
+      <Header showSettings={true} onSettingsPress={() => router.push('/settings')} />
 
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
         
@@ -36,7 +39,9 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Text style={styles.profileName}>NUSSTU</Text>
+          <Text style={styles.profileName}>
+            {auth.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Student'}
+          </Text>
           <Text style={styles.profileSubtitle}>School of Computing • Year 3</Text>
 
           <View style={styles.actionButtonsRow}>

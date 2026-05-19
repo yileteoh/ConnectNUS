@@ -3,7 +3,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function Header() {
+export default function Header({ showSettings, onSettingsPress }) {
   return (
     <View style={styles.headerContainer}>
       {/* Left section: Profile Image */}
@@ -23,11 +23,17 @@ export default function Header() {
         />
       </View>
 
-      {/* Right section: Notification Icon */}
+      {/* Right section: Notification or Settings Icon */}
       <View style={styles.headerRight}>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={28} color="#002D5B" />
-        </TouchableOpacity>
+        {showSettings ? (
+          <TouchableOpacity onPress={onSettingsPress}>
+            <Ionicons name="settings-outline" size={28} color="#002D5B" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity>
+            <Ionicons name="notifications-outline" size={28} color="#002D5B" />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
