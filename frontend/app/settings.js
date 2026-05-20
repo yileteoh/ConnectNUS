@@ -49,6 +49,8 @@ export default function SettingsScreen() {
   const handleItemPress = (item) => {
     if (item.title === 'Log Out') {
       handleSignOut();
+    } else if (item.title === 'Edit Profile') {
+      router.push('/edit-profile');
     } else {
       Alert.alert("Coming Soon", `${item.title} feature will be available later!`);
     }

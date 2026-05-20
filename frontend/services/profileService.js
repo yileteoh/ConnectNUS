@@ -1,7 +1,10 @@
 // frontend/services/profileService.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import Constants from 'expo-constants';
+
+const BASE_URL = Constants.expoConfig?.extra?.backendUrl || 'http://YOUR_LOCAL_IP:3000';
 
 export const DEFAULT_PROFILE_PIC_URL = 'https://randomuser.me/api/portraits/lego/1.jpg';
 
@@ -41,16 +44,25 @@ export const normalizeProfile = (profile = {}) => ({
 
 export const getUserProfile = async (userId) => {
   try {
-    const userDocRef = doc(db, 'users', userId);
-    const docSnap = await getDoc(userDocRef);
+    const response = await fetch(`${BASE_URL}/api/profile/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
 
-    if (docSnap.exists()) {
-      return normalizeProfile(docSnap.data());
+    if (response.status === 404) {
+      return null; // Profile doesn't exist yet
     }
 
-    return null;
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to fetch profile from backend.');
+    }
+
+    return normalizeProfile(result.data);
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    console.error('Error fetching user profile via backend API:', error);
     throw error;
   }
 };
@@ -67,25 +79,30 @@ export const setCachedProfileSetupComplete = async (userId, isComplete) => {
 export const updateUserProfile = async (userId, profileData) => {
   try {
     const normalizedProfile = normalizeProfile(profileData);
-    const userDocRef = doc(db, 'users', userId);
-
-    await setDoc(
-      userDocRef,
-      {
-        ...normalizedProfile,
-        userId,
-        profilePicUrl: normalizedProfile.profilePicUrl || DEFAULT_PROFILE_PIC_URL,
-        isBuddy: normalizedProfile.buddyStatus,
-        setupComplete: true,
-        updatedAt: serverTimestamp(),
+    
+    // Call the PUT /api/profile endpoint in your server.js
+    const response = await fetch(`${BASE_URL}/api/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      { merge: true }
-    );
+      body: JSON.stringify({
+        userId: userId,
+        ...normalizedProfile,
+      }),
+    });
 
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to update profile via backend.');
+    }
+
+    // Update local storage to bypass setup screen next time
     await setCachedProfileSetupComplete(userId, true);
     return true;
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    console.error('Error updating user profile via API:', error);
     throw error;
   }
 };

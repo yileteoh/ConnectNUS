@@ -144,7 +144,7 @@ app.get('/api/profile/:userId', async (req, res) => {
     if (!userDoc.exists) {
       return res.status(404).json({
         status: 'error',
-        message: 'Profile not found. User may need to set up profile.'
+        message: 'Profile not found.'
       });
     }
 
@@ -156,10 +156,7 @@ app.get('/api/profile/:userId', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching profile:', error);
-    return res.status(500).json({ 
-      status: 'error', 
-      message: 'Internal server error.' 
-    });
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 

@@ -1,5 +1,5 @@
 // frontend/app/_layout.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, createContext } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { auth } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -9,6 +9,9 @@ import {
   getUserProfile,
   setCachedProfileSetupComplete,
 } from '../services/profileService';
+
+// Create a global AuthContext to share the profile setup state across screens
+export const AuthContext = createContext();
 
 export default function RootLayout() {
   const [initializing, setInitializing] = useState(true);
@@ -84,19 +87,23 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* Auth screens */}
-      <Stack.Screen name="index" />
-      <Stack.Screen name="register" />
-      <Stack.Screen name="profile-setup" />
-      <Stack.Screen name="edit-profile" />
-      
-      {/* Main app screens (Tabs) */}
-      <Stack.Screen name="(tabs)" /> 
 
-      {/* Settings screen accessible from Profile tab */}
-      <Stack.Screen name="settings" />
+    <AuthContext.Provider value={{ setProfileComplete }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* Auth screens */}
+        <Stack.Screen name="index" />
+        <Stack.Screen name="register" />
+        <Stack.Screen name="profile-setup" />
+        <Stack.Screen name="edit-profile" />
+        
+        {/* Main app screens (Tabs) */}
+        <Stack.Screen name="(tabs)" /> 
 
-    </Stack>
+        {/* Settings screen accessible from Profile tab */}
+        <Stack.Screen name="settings" />
+
+      </Stack>
+    </AuthContext.Provider>
+
   );
 }
