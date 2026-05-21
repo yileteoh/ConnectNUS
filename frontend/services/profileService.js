@@ -1,12 +1,10 @@
 // frontend/services/profileService.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
 import Constants from 'expo-constants';
 
 const BASE_URL = Constants.expoConfig?.extra?.backendUrl || 'http://YOUR_LOCAL_IP:3000';
 
-export const DEFAULT_PROFILE_PIC_URL = 'https://randomuser.me/api/portraits/lego/1.jpg';
+export const DEFAULT_PROFILE_PIC_URL = '';
 
 export const emptyProfile = {
   name: '',
@@ -40,6 +38,7 @@ export const normalizeProfile = (profile = {}) => ({
   modules: normalizeList(profile.modules),
   interests: normalizeList(profile.interests),
   buddyStatus: Boolean(profile.buddyStatus ?? profile.isBuddy),
+  socialLinks: normalizeList(profile.socialLinks || profile.socialLinksList),
 });
 
 export const getUserProfile = async (userId) => {
@@ -89,6 +88,8 @@ export const updateUserProfile = async (userId, profileData) => {
       body: JSON.stringify({
         userId: userId,
         ...normalizedProfile,
+        socialLinks: normalizedProfile.socialLinks,
+        profilePicUrl: normalizedProfile.profilePicUrl ? normalizedProfile.profilePicUrl.trim() : '',
       }),
     });
 

@@ -8,6 +8,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  Linking,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -16,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
-import { DEFAULT_PROFILE_PIC_URL, getUserProfile } from '../../services/profileService';
+import { getUserProfile } from '../../services/profileService';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -57,14 +58,28 @@ export default function ProfileScreen() {
     });
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#002D5B" />
-        <Text style={styles.loadingText}>Loading your profile...</Text>
-      </SafeAreaView>
-    );
-  }
+// Open any specific external link from the array safely
+  const handleOpenLink = async (rawUrl) => {
+    let url = rawUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) await Linking.openURL(url);
+    } catch (error) {
+      console.error("Failed to open link:", url, error);
+    }
+  };
+
+if (loading && !profile) {
+  return (
+    <SafeAreaView style={styles.absoluteCenterContainer}>
+      <ActivityIndicator size="large" color="#002D5B" />
+      <Text style={styles.fullscreenLoadingText}>Loading your profile...</Text>
+    </SafeAreaView>
+  );
+}
 
   if (!profile || profile.setupComplete !== true) {
     return (
@@ -82,8 +97,35 @@ export default function ProfileScreen() {
     );
   }
 
+  const getAvatarSource = () => {
+  // If the user has a valid custom URL saved, use the network URI
+  if (profile?.profilePicUrl && profile.profilePicUrl.trim() !== '') {
+    return { uri: profile.profilePicUrl.trim() };
+  }
+  return require('../../assets/profile_image.jpg');
+};
+
+const getPlatformConfig = (url) => {
+  const lowerUrl = url.toLowerCase();
+  
+  if (lowerUrl.includes('linkedin.com')) {
+    return { icon: 'logo-linkedin', color: '#0A66C2', label: 'LinkedIn' };
+  }
+  if (lowerUrl.includes('github.com')) {
+    return { icon: 'logo-github', color: '#24292E', label: 'GitHub' };
+  }
+  if (lowerUrl.includes('instagram.com')) {
+    return { icon: 'logo-instagram', color: '#E1306C', label: 'Instagram' };
+  }
+  if (lowerUrl.includes('t.me') || lowerUrl.includes('telegram.org')) {
+    return { icon: 'paper-plane-outline', color: '#0088CC', label: 'Telegram' };
+  }
+  
+  // Wildcard fallback for any other custom portfolio/website URLs
+  return { icon: 'link-outline', color: '#002D5B', label: 'Website' };
+};
+
   const displayName = profile.name || auth.currentUser?.email?.split('@')[0] || 'Student';
-  const avatarUrl = profile.profilePicUrl || DEFAULT_PROFILE_PIC_URL;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -92,7 +134,7 @@ export default function ProfileScreen() {
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            <Image source={{ uri: avatarUrl }} style={styles.mainAvatar} />
+            <Image source={getAvatarSource()} style={styles.mainAvatar} />
             <View style={styles.verifiedBadge}>
               <MaterialCommunityIcons name="check-decagram" size={20} color="#F28C28" />
             </View>
@@ -149,7 +191,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {(profile.bio || profile.socialLinks) ? (
+        {(profile.bio || (profile.socialLinks && profile.socialLinks.length > 0)) ? (
           <View style={styles.aboutCard}>
             {profile.bio ? (
               <>
@@ -157,10 +199,29 @@ export default function ProfileScreen() {
                 <Text style={styles.aboutText}>{profile.bio}</Text>
               </>
             ) : null}
-            {profile.socialLinks ? (
+            
+            {profile.socialLinks && profile.socialLinks.length > 0 ? (
               <>
-                <Text style={styles.interestsLabel}>SOCIAL</Text>
-                <Text style={styles.socialText}>{profile.socialLinks}</Text>
+                <Text style={styles.interestsLabel}>SOCIAL PROFILES</Text>
+                <View style={styles.socialGrid}>
+                  {profile.socialLinks.map((link, index) => {
+                    const config = getPlatformConfig(link);
+                    return (
+                      <TouchableOpacity 
+                        key={`${link}-${index}`}
+                        style={[styles.socialClickableRow, { borderColor: config.color + '40' }]} 
+                        onPress={() => handleOpenLink(link)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name={config.icon} size={18} color={config.color} />
+                        <Text style={[styles.socialLinkButtonText, { color: config.color }]}>
+                          {config.label}
+                        </Text>
+                        <Ionicons name="open-outline" size={12} color="#888" style={{ marginLeft: 6 }} />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </>
             ) : null}
           </View>
@@ -236,17 +297,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
+  absoluteCenterContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    position: 'absolute', // Ensures it stays on top of everything if needed
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  fullscreenLoadingText: {
+    marginTop: 12,
+    color: '#002D5B',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   emptyContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#555',
-    fontSize: 14,
-    textAlign: 'center',
   },
   emptyTitle: {
     fontSize: 20,
@@ -548,5 +621,26 @@ const styles = StyleSheet.create({
   listCardSubtitle: {
     fontSize: 14,
     color: '#555',
+  },
+  socialGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+  socialClickableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderRadius: 20, // Circular pill style looks cleaner for multiple links
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  socialLinkButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });

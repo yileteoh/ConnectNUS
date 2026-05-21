@@ -1,5 +1,5 @@
 // frontend/app/home.js
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -7,28 +7,76 @@ import {
   ScrollView, 
   TouchableOpacity, 
   SafeAreaView,
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
+import { useFocusEffect } from '@react-navigation/native';
+import { getUserProfile } from '../../services/profileService';
 
 export default function HomeScreen() {
   const router = useRouter(); // Initialize router for navigation
+
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const fetchHomeProfileData = async () => {
+        try {
+          const userId = auth.currentUser?.uid;
+          if (!userId) return;
+
+          const data = await getUserProfile(userId);
+          if (isActive && data) {
+            setProfile(data);
+          }
+        } catch (error) {
+          console.error('Failed to sync profile on home tab screen:', error);
+        } finally {
+          if (isActive) setLoading(false);
+        }
+      };
+
+      fetchHomeProfileData();
+
+      return () => {
+        isActive = false; // Teardown safeguard
+      };
+    }, [])
+  );
+
+  const welcomeName = profile?.name && profile.name.trim() !== ''
+    ? profile.name
+    : (auth.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Student');
+
+  // Full-screen loading placeholder to guard uninitialized state renders beautifully
+  if (loading && !profile) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#002D5B" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     
     <SafeAreaView style={styles.safeArea}>
 
       {/* Header Section */}
-      <Header title="Home" />
+      <Header title="Home" showSettings={false}/>
 
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
 
         {/* Greeting Section */}
         <View style={styles.greetingSection}>
           <Text style={styles.welcomeTitle}>
-            Hi, {auth.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Student'}!
+            Hi, {welcomeName}!
           </Text>
           <Text style={styles.subTitle}>What are you looking for today?</Text>
         </View>
@@ -153,6 +201,12 @@ const styles = StyleSheet.create({
   safeArea: { 
     flex: 1, 
     backgroundColor: '#FAFAFA' 
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA'
   },
   container: { 
     flex: 1, 

@@ -17,7 +17,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../firebaseConfig';
 import {
-  DEFAULT_PROFILE_PIC_URL,
   emptyProfile,
   isValidHttpUrl,
   normalizeProfile,
@@ -54,19 +53,43 @@ export default function ProfileForm({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(normalizeProfile(initialProfile || {}));
+
+    const normalized = normalizeProfile(initialProfile || {});
+    
+    if (Array.isArray(normalized.socialLinks)) {
+      normalized.socialLinks = normalized.socialLinks.join(', ');
+    } else if (typeof normalized.socialLinks !== 'string') {
+      normalized.socialLinks = '';
+    }
+
+    setForm(normalized);
   }, [initialProfile]);
 
   const moduleOptions = useMemo(() => {
-    const facultyModules = MODULE_OPTIONS_BY_FACULTY[form.faculty] || ALL_MODULE_OPTIONS;
     const query = moduleQuery.trim().toUpperCase();
 
-    if (!query) return facultyModules.slice(0, 36);
+    if (query) {
+      return ALL_MODULE_OPTIONS
+        .filter((moduleCode) => moduleCode.toUpperCase().includes(query))
+        .slice(0, 20); // Show up to 20 matched results globally for smoother performance
+    }
 
-    return facultyModules
-      .filter((moduleCode) => moduleCode.toUpperCase().includes(query))
-      .slice(0, 36);
+    // show their own faculty's modules as convenient quick-recommendations.
+    if (form.faculty) {
+      const facultyModules = MODULE_OPTIONS_BY_FACULTY[form.faculty] || [];
+      return facultyModules.slice(0, 20);
+    }
+
+    // If no faculty is selected and search is empty, show nothing to keep the view clean
+    return [];
   }, [form.faculty, moduleQuery]);
+
+  const getPreviewSource = () => {
+    if (form.profilePicUrl && form.profilePicUrl.trim() !== '') {
+      return { uri: form.profilePicUrl.trim() };
+    }
+    return require('../assets/profile_image.jpg');
+  };
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -113,19 +136,31 @@ export default function ProfileForm({
       return;
     }
 
-    if (!isValidHttpUrl(form.profilePicUrl)) {
+    if (form.profilePicUrl && form.profilePicUrl.trim() !== '' && !isValidHttpUrl(form.profilePicUrl)) {
       Alert.alert('Invalid profile picture link', 'Please enter a valid http:// or https:// image URL.');
-      return;
-    }
-
-    if (!isValidHttpUrl(form.socialLinks)) {
-      Alert.alert('Invalid social link', 'Please enter a valid http:// or https:// social link.');
       return;
     }
 
     setSaving(true);
     try {
-      await updateUserProfile(userId, form);
+      const submissionData = { ...form };
+
+      submissionData.profilePicUrl = form.profilePicUrl ? form.profilePicUrl.trim() : '';
+
+      if (typeof submissionData.socialLinks === 'string') {
+        submissionData.socialLinks = submissionData.socialLinks
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      await updateUserProfile(userId, submissionData);
+      const rememberedForm = { ...submissionData };
+      if (Array.isArray(rememberedForm.socialLinks)) {
+        rememberedForm.socialLinks = rememberedForm.socialLinks.join(', ');
+      }
+      setForm(rememberedForm);
+      
       onSaved?.();
     } catch (error) {
       console.error('Failed to save profile:', error);
@@ -160,7 +195,7 @@ export default function ProfileForm({
             <Text style={styles.label}>Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="Your display name"
+              placeholder="Your name"
               value={form.name}
               onChangeText={(value) => updateField('name', value)}
             />
@@ -254,7 +289,7 @@ export default function ProfileForm({
               })}
             </View>
             <Text style={styles.helperText}>
-              Showing up to 36 results. Search to narrow the list.
+              Showing up to 20 results. Search to narrow the list.
             </Text>
 
             <View style={styles.labelRow}>
@@ -328,7 +363,7 @@ export default function ProfileForm({
             <Text style={styles.label}>Profile Picture URL</Text>
             <View style={styles.avatarPreviewRow}>
               <Image
-                source={{ uri: form.profilePicUrl.trim() || DEFAULT_PROFILE_PIC_URL }}
+                source={getPreviewSource()}
                 style={styles.avatarPreview}
               />
               <View style={styles.avatarPreviewText}>
@@ -346,13 +381,18 @@ export default function ProfileForm({
               autoCapitalize="none"
             />
 
-            <Text style={styles.label}>Social Link</Text>
+            <Text style={styles.label}>Social Links</Text>
+            <Text style={[styles.helperText, { color: '#002D5B', fontWeight: '500' }]}>
+               Tip: You can separate multiple platforms with commas. We automatically recognize LinkedIn, GitHub, Instagram, and Telegram!
+            </Text>
             <TextInput
-              style={styles.input}
-              placeholder="https://linkedin.com/in/your-profile"
+              style={[styles.input, styles.socialTextArea]}
+              placeholder="https://instagram.com/username, https://github.com/username"
               value={form.socialLinks}
               onChangeText={(value) => updateField('socialLinks', value)}
               autoCapitalize="none"
+              multiline={true}
+              textAlignVertical="top"
             />
 
             <View style={styles.switchRow}>
@@ -471,6 +511,11 @@ const styles = StyleSheet.create({
   },
   textArea: {
     minHeight: 110,
+  },
+  socialTextArea: {
+    minHeight: 80,
+    paddingTop: 12, 
+    marginBottom: 14,
   },
   avatarPreviewRow: {
     flexDirection: 'row',

@@ -12,7 +12,6 @@ admin.initializeApp({
 const db = admin.firestore(); // Connect to the database
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DEFAULT_PROFILE_PIC_URL = 'https://randomuser.me/api/portraits/lego/1.jpg';
 
 app.use(cors());
 app.use(express.json());
@@ -53,7 +52,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// 4. User Profile Routes (Feature 2)
+// 4. User Profile Routes
 /**
  * @route   PUT /api/profile
  * @desc    Create or update user profile information
@@ -85,12 +84,18 @@ app.put('/api/profile', async (req, res) => {
       });
     }
 
-    if (!isValidHttpUrl(profilePicUrl) || !isValidHttpUrl(socialLinks)) {
+    const normalizedSocials = Array.isArray(socialLinks) ? socialLinks.filter(Boolean) : [];
+
+    if (!isValidHttpUrl(profilePicUrl)) {
       return res.status(400).json({
         status: 'error',
-        message: 'Profile picture and social link must be valid http:// or https:// URLs.'
+        message: 'Profile picture must be a valid http:// or https:// URL.'
       });
     }
+
+    const finalizedAvatarUrl = (profilePicUrl && typeof profilePicUrl === 'string') 
+      ? profilePicUrl.trim() 
+      : '';
 
     // Prepare profile data object
     const profileData = {
@@ -101,8 +106,8 @@ app.put('/api/profile', async (req, res) => {
       modules: normalizedModules,
       interests: normalizedInterests,
       bio: bio || '',
-      profilePicUrl: profilePicUrl || DEFAULT_PROFILE_PIC_URL,
-      socialLinks: socialLinks || '',
+      profilePicUrl: finalizedAvatarUrl,
+      socialLinks: normalizedSocials,
       buddyStatus: buddyStatus ?? isBuddy ?? false,
       isBuddy: buddyStatus ?? isBuddy ?? false,
       setupComplete: true, // Mark profile as complete once saved!
