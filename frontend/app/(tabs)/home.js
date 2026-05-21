@@ -10,15 +10,13 @@ import {
   Image,
   ActivityIndicator
 } from 'react-native';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUserProfile } from '../../services/profileService';
 
 export default function HomeScreen() {
-  const router = useRouter(); // Initialize router for navigation
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +67,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
 
       {/* Header Section */}
-      <Header title="Home" showSettings={false}/>
+      <Header showSettings={false}/>
 
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
 

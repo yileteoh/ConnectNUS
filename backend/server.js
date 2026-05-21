@@ -109,7 +109,6 @@ app.put('/api/profile', async (req, res) => {
       profilePicUrl: finalizedAvatarUrl,
       socialLinks: normalizedSocials,
       buddyStatus: buddyStatus ?? isBuddy ?? false,
-      isBuddy: buddyStatus ?? isBuddy ?? false,
       setupComplete: true, // Mark profile as complete once saved!
       updatedAt: admin.firestore.FieldValue.serverTimestamp() // Auto-generated server time
     };

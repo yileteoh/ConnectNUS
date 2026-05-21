@@ -11,17 +11,15 @@ import {
   TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import Header from '../../components/Header';
 
 // Pass the 'navigation' prop to enable routing to other screens
 export default function ForumScreen() {
-  const router = useRouter(); // Initialize router for navigation
   return (
     <SafeAreaView style={styles.safeArea}>
       
       {/* Header Section */}
-      <Header title="Forum" />
+      <Header />
 
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
         

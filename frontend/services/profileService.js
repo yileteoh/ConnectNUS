@@ -4,8 +4,6 @@ import Constants from 'expo-constants';
 
 const BASE_URL = Constants.expoConfig?.extra?.backendUrl || 'http://YOUR_LOCAL_IP:3000';
 
-export const DEFAULT_PROFILE_PIC_URL = '';
-
 export const emptyProfile = {
   name: '',
   faculty: '',
@@ -88,7 +86,6 @@ export const updateUserProfile = async (userId, profileData) => {
       body: JSON.stringify({
         userId: userId,
         ...normalizedProfile,
-        socialLinks: normalizedProfile.socialLinks,
         profilePicUrl: normalizedProfile.profilePicUrl ? normalizedProfile.profilePicUrl.trim() : '',
       }),
     });

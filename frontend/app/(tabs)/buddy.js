@@ -9,17 +9,15 @@ import {
   SafeAreaView,
   Image
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/Header';
 
 export default function BuddyScreen() {
-  const router = useRouter(); // Initialize router for navigation
   return (
     <SafeAreaView style={styles.safeArea}>
       
       {/* Header Section */}
-      <Header title="Buddy" />
+      <Header />
 
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
         

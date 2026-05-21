@@ -51,10 +51,11 @@ export default function ProfileScreen() {
     }, [])
   );
 
+  const displayName = profile?.name || auth.currentUser?.email?.split('@')[0] || 'Student';
+
   const handleShare = async () => {
-    const name = profile?.name || auth.currentUser?.email?.split('@')[0] || 'ConnectNUS Student';
     await Share.share({
-      message: `${name} on ConnectNUS\nModules: ${(profile?.modules || []).join(', ') || 'Not added yet'}\nInterests: ${(profile?.interests || []).join(', ') || 'Not added yet'}`,
+      message: `${displayName} on ConnectNUS\nModules: ${(profile?.modules || []).join(', ') || 'Not added yet'}\nInterests: ${(profile?.interests || []).join(', ') || 'Not added yet'}`,
     });
   };
 
@@ -124,8 +125,6 @@ const getPlatformConfig = (url) => {
   // Wildcard fallback for any other custom portfolio/website URLs
   return { icon: 'link-outline', color: '#002D5B', label: 'Website' };
 };
-
-  const displayName = profile.name || auth.currentUser?.email?.split('@')[0] || 'Student';
 
   return (
     <SafeAreaView style={styles.safeArea}>
