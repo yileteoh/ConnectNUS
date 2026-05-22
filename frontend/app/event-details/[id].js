@@ -91,16 +91,16 @@ export default function EventDetailsScreen() {
       'Cancel Event',
       'This will cancel the event and notify all registered participants.',
       [
-        { text: 'Keep Event', style: 'cancel' },
+        { text: 'Keep', style: 'cancel' },
         {
-          text: 'Cancel Event',
+          text: 'Cancel',
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
             try {
               await deleteEvent(id, currentUserId);
               Alert.alert('Cancelled', 'Your event listing has been cancelled.', [
-                { text: 'Back to Feed', onPress: () => router.replace('/(tabs)/event') }
+                { text: 'Back', onPress: () => router.replace('/(tabs)/event') }
               ]);
             } catch (error) {
               Alert.alert('Action Blocked', error.message);
@@ -198,7 +198,7 @@ export default function EventDetailsScreen() {
 
       </ScrollView>
 
-      {/* Floating Bottom Action Bar (Upgraded status engine) */}
+      {/* Floating Bottom Action Bar */}
       <View style={styles.bottomBar}>
         {isCreator ? (
           /* State A: User is the master room manager */

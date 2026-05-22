@@ -88,12 +88,12 @@ export default function EditEventScreen() {
     const capNumber = parseInt(capacity, 10);
 
     if (!title.trim() || !location.trim() || !isoTime) {
-      Alert.alert('Missing Fields', 'Please fill up mandatory parameters before save operations.');
+      Alert.alert('Missing Fields', 'Please fill up mandatory information before save operations.');
       return;
     }
 
     if (isNaN(capNumber) || capNumber <= 0) {
-      Alert.alert('Invalid Capacity', 'Please supply a numerical room slot cap.');
+      Alert.alert('Invalid Capacity', 'Please enter a valid number of slots (e.g., 4).');
       return;
     }
 
@@ -111,8 +111,8 @@ export default function EditEventScreen() {
       // Dispatch data package stream to update API endpoint
       await updateEvent(id, currentUserId, adjustmentPayload);
 
-      Alert.alert('Updated Successfully!', 'Changes synced across database boards.', [
-        { text: 'Got It', onPress: () => router.replace(`/event-details/${id}`) }
+      Alert.alert('Updated Successfully!', 'Your changes have been saved.', [
+        { text: 'OK', onPress: () => router.replace(`/event-details/${id}`) }
       ]);
     } catch (error) {
       Alert.alert('Update Terminated', error.message || 'Check structural constraints.');
@@ -166,7 +166,6 @@ export default function EditEventScreen() {
             <TextInput style={styles.textInput} value={location} onChangeText={setLocation} />
 
             <Text style={styles.formLabel}>Date & Time Window</Text>
-            <Text style={styles.helperText}>Tap boxes to shift schedule parameters.</Text>
             
             <View style={styles.dateTimeContainer}>
               <View style={styles.datePickerColumn}>
@@ -234,7 +233,6 @@ const styles = StyleSheet.create({
   categoryChipSelected: { borderColor: '#002D5B', backgroundColor: '#EBF4FA' },
   chipText: { fontSize: 13, fontWeight: '600', color: '#555555' },
   chipTextSelected: { color: '#002D5B', fontWeight: '700' },
-  helperText: { color: '#777', fontSize: 12, marginBottom: 12, marginTop: -4 },
   dateTimeContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   datePickerColumn: { flex: 1 },
   miniLabel: { fontSize: 12, fontWeight: '600', color: '#666', marginBottom: 6 },
