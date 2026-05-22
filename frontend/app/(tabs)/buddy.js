@@ -7,7 +7,9 @@ import {
   ScrollView, 
   TouchableOpacity, 
   SafeAreaView,
-  Image
+  Image,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/Header';
@@ -188,7 +190,8 @@ export default function BuddyScreen() {
 const styles = StyleSheet.create({
   safeArea: { 
     flex: 1, 
-    backgroundColor: '#FAFAFA' 
+    backgroundColor: '#FAFAFA',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   container: { 
     flex: 1, 

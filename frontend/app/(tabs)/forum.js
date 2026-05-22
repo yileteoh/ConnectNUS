@@ -8,7 +8,9 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   Image,
-  TextInput
+  TextInput,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/Header';
@@ -212,11 +214,13 @@ export default function ForumScreen() {
 const styles = StyleSheet.create({
   safeArea: { 
     flex: 1, 
-    backgroundColor: '#FAFAFA' 
+    backgroundColor: '#FAFAFA',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   container: { 
     flex: 1, 
     paddingHorizontal: 15,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   
   /* Search Bar */

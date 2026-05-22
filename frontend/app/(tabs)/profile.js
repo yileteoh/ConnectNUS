@@ -11,6 +11,8 @@ import {
   Linking,
   TouchableOpacity,
   View,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -287,6 +289,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FAFAFA',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   container: {
     flex: 1,

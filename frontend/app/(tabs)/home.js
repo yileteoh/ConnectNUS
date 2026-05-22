@@ -8,7 +8,9 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   Image,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import Header from '../../components/Header';
@@ -198,7 +200,8 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: { 
     flex: 1, 
-    backgroundColor: '#FAFAFA' 
+    backgroundColor: '#FAFAFA',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   loadingContainer: {
     flex: 1,

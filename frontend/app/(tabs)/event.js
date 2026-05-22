@@ -8,12 +8,18 @@ import {
   TouchableOpacity, 
   SafeAreaView,
   Image,
-  TextInput
+  TextInput,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/Header';
+import { useRouter } from 'expo-router';
 
 export default function EventScreen() {
+  
+  const router = useRouter();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       
@@ -144,7 +150,7 @@ export default function EventScreen() {
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity style={styles.fab} onPress={() => router.push('/create-event')}>
         <Ionicons name="add" size={30} color="#FFF" />
       </TouchableOpacity>
 
@@ -155,7 +161,8 @@ export default function EventScreen() {
 const styles = StyleSheet.create({
   safeArea: { 
     flex: 1, 
-    backgroundColor: '#FAFAFA' 
+    backgroundColor: '#FAFAFA',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   container: { 
     flex: 1, 

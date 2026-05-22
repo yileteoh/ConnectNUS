@@ -13,6 +13,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../firebaseConfig';
@@ -428,6 +429,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FAFAFA',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0
   },
   keyboardView: {
     flex: 1,

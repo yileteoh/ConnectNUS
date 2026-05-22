@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    paddingTop: 12, // Comfortable spacing for status bar
+    paddingTop: 8, // Comfortable spacing for status bar
     paddingBottom: 12,
     paddingHorizontal: 16, // Clean horizontal screen alignment inset
     backgroundColor: '#FFFFFF', // Pure crisp white header background

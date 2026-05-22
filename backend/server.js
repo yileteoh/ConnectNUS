@@ -28,6 +28,11 @@ const isValidHttpUrl = (value) => {
 };
 
 // 3. The Real Registration Route (Front-end will call this)
+/** 
+ * @route   POST /api/register
+ * @desc    Register a new user and create a Firestore document
+ * @access  Public (Should be protected via auth token later)
+ */
 app.post('/api/register', async (req, res) => {
     try {
         const { email, uid } = req.body; // Data sent from React Native
@@ -160,6 +165,93 @@ app.get('/api/profile/:userId', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching profile:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
+  }
+});
+
+// 5. Event Routes
+/**
+ * @route   POST /api/events
+ * @desc    Create a new event/study group post
+ * @access  Public (Will be protected later)
+ */
+app.post('/api/events', async (req, res) => {
+  try {
+    const { title, category, location, time, capacity, description, creatorId } = req.body;
+
+    // Validate required fields
+    if (!title || !category || !location || !time || !capacity || !creatorId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Missing required event fields.'
+      });
+    }
+
+    // Prepare the event document blueprint
+    const eventData = {
+      title: title.trim(),
+      category: category,
+      location: location.trim(),
+      time: time, // Expected to be an ISO string, e.g., "2026-05-22T14:00:00.000Z"
+      capacity: Number(capacity),
+      description: description ? description.trim() : '',
+      creatorId: creatorId,
+      attendees: [creatorId], // The creator automatically joins their own event
+      status: 'open',         // 'open', 'full', or 'cancelled'
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // Add the new event to the 'events' collection
+    const eventRef = await db.collection('events').add(eventData);
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'Event created successfully!',
+      data: {
+        eventId: eventRef.id,
+        ...eventData
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating event:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
+  }
+});
+
+/**
+ * @route   GET /api/events
+ * @desc    Fetch all events (with optional category filter)
+ * @access  Public
+ */
+app.get('/api/events', async (req, res) => {
+  try {
+    const { category } = req.query;
+    
+    let eventsQuery = db.collection('events').orderBy('createdAt', 'desc');
+
+    // If a specific category is requested, filter the database
+    if (category && category !== 'All Events') {
+      eventsQuery = eventsQuery.where('category', '==', category);
+    }
+
+    const snapshot = await eventsQuery.get();
+    const events = [];
+
+    snapshot.forEach(doc => {
+      events.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      data: events
+    });
+
+  } catch (error) {
+    console.error('Error fetching events:', error);
     return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });

@@ -7,7 +7,9 @@ import {
   SafeAreaView, 
   FlatList, 
   TouchableOpacity, 
-  Alert 
+  Alert,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -97,7 +99,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FAFAFA' },
+  safeArea: { flex: 1, backgroundColor: '#FAFAFA', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
