@@ -56,3 +56,36 @@ export const fetchGlobalEvents = async (category) => {
     throw error;
   }
 };
+
+// Fetch detailed information for a single specific event
+export const getEventDetails = async (eventId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/events/${eventId}`);
+    const result = await response.json();
+    
+    if (!response.ok) throw new Error(result.message);
+    return result.data;
+  } catch (error) {
+    console.error('Error fetching event details:', error);
+    throw error;
+  }
+};
+
+// Dispatch an RSVP join request to the server
+export const joinEvent = async (eventId, userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/events/${eventId}/join`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }), // Send the current user's ID in req.body
+    });
+    
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    
+    return result;
+  } catch (error) {
+    console.error('Error joining event:', error);
+    throw error;
+  }
+};

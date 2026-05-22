@@ -226,23 +226,26 @@ app.post('/api/events', async (req, res) => {
  */
 app.get('/api/events', async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category } = req.query; 
     
-    let eventsQuery = db.collection('events').orderBy('createdAt', 'desc');
-
-    // If a specific category is requested, filter the database
-    if (category && category !== 'All Events') {
-      eventsQuery = eventsQuery.where('category', '==', category);
-    }
-
-    const snapshot = await eventsQuery.get();
-    const events = [];
+    const snapshot = await db.collection('events').get();
+    let events = [];
 
     snapshot.forEach(doc => {
       events.push({
         id: doc.id,
         ...doc.data()
       });
+    });
+
+    if (category && category !== 'All Events') {
+      events = events.filter(event => event.category === category);
+    }
+
+    events.sort((a, b) => {
+      const timeA = (a.createdAt && typeof a.createdAt.toMillis === 'function') ? a.createdAt.toMillis() : 0;
+      const timeB = (b.createdAt && typeof b.createdAt.toMillis === 'function') ? b.createdAt.toMillis() : 0;
+      return timeB - timeA;
     });
 
     return res.status(200).json({
@@ -253,6 +256,69 @@ app.get('/api/events', async (req, res) => {
   } catch (error) {
     console.error('Error fetching events:', error);
     return res.status(500).json({ status: 'error', message: 'Internal server error.' });
+  }
+});
+
+/**
+ * @route   GET /api/events/:eventId
+ * @desc    Fetch details for a specific event by its ID
+ * @access  Public
+ */
+app.get('/api/events/:eventId', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    
+    const doc = await db.collection('events').doc(eventId).get();
+    if (!doc.exists) {
+      return res.status(404).json({ status: 'error', message: 'Event not found.' });
+    }
+
+    return res.status(200).json({ 
+      status: 'success', 
+      data: { id: doc.id, ...doc.data() } 
+    });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+/**
+ * @route   PUT /api/events/:eventId/join
+ * @desc    RSVP to an event
+ * @access  Public
+ */
+app.put('/api/events/:eventId/join', async (req, res) => {
+  const { eventId } = req.params;
+  const { userId } = req.body;
+
+  try {
+    const eventRef = db.collection('events').doc(eventId);
+
+    // Run a transaction to ensure thread-safe updates
+    await db.runTransaction(async (transaction) => {
+      const eventDoc = await transaction.get(eventRef);
+      if (!eventDoc.exists) throw new Error("Event does not exist.");
+
+      const eventData = eventDoc.data();
+      const attendees = eventData.attendees || [];
+
+      // Check if user already joined
+      if (attendees.includes(userId)) throw new Error("You have already joined this event.");
+      
+      // Check capacity
+      if (attendees.length >= eventData.capacity) throw new Error("Event is full.");
+
+      // Update the event
+      transaction.update(eventRef, {
+        attendees: admin.firestore.FieldValue.arrayUnion(userId),
+        // If full, auto-update status (optional, for convenience)
+        status: (attendees.length + 1 >= eventData.capacity) ? 'full' : 'open'
+      });
+    });
+
+    return res.status(200).json({ status: 'success', message: 'Successfully joined!' });
+  } catch (error) {
+    return res.status(400).json({ status: 'error', message: error.message });
   }
 });
 

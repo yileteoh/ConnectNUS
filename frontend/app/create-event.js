@@ -92,7 +92,7 @@ export default function CreateEventScreen() {
       await createNewEvent(transmissionPayload);
 
       Alert.alert('Success!', 'Your campus activity has been published successfully.', [
-        { text: 'Awesome', onPress: () => router.replace('/(tabs)/event') }
+        { text: 'OK', onPress: () => router.replace('/(tabs)/event') }
       ]);
     } catch (error) {
       console.error('Failed to submit event payload:', error);
