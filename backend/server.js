@@ -322,6 +322,138 @@ app.put('/api/events/:eventId/join', async (req, res) => {
   }
 });
 
+/**
+ * @route   PUT /api/events/:eventId/leave
+ * @desc    Leave logic to safely exit an event roster
+ * @access  Public
+ */
+app.put('/api/events/:eventId/leave', async (req, res) => {
+  const { eventId } = req.params;
+  const { userId } = req.body; // Passed from frontend storage state
+
+  try {
+    const eventRef = db.collection('events').doc(eventId);
+
+    await db.runTransaction(async (transaction) => {
+      const eventDoc = await transaction.get(eventRef);
+      if (!eventDoc.exists) throw new Error("Target campus event not found.");
+
+      const eventData = eventDoc.data();
+      const attendees = eventData.attendees || [];
+
+      // Check if user is actually in the roster
+      if (!attendees.includes(userId)) throw new Error("You are not part of this attendee roster.");
+      
+      // Host shouldn't break the room by leaving
+      if (eventData.creatorId === userId) {
+        throw new Error("Hosts cannot abandon their own event. Use cancellation instead.");
+      }
+
+      // Remove the user from array and force reopen status flag
+      transaction.update(eventRef, {
+        attendees: admin.firestore.FieldValue.arrayRemove(userId),
+        status: 'open' // Freeing up a slot naturally marks the state back to open
+      });
+    });
+
+    return res.status(200).json({ status: 'success', message: 'Successfully removed from gathering.' });
+  } catch (error) {
+    return res.status(400).json({ status: 'error', message: error.message });
+  }
+});
+
+/**
+ * @route   DELETE /api/events/:eventId
+ * @desc    Permanently delete an event document
+ * @access  Public
+ */
+app.delete('/api/events/:eventId', async (req, res) => {
+  const { eventId } = req.params;
+  const { userId } = req.body; // Pass current authenticated UID to verify ownership
+
+  try {
+    const eventRef = db.collection('events').doc(eventId);
+    const eventDoc = await eventRef.get();
+
+    if (!eventDoc.exists) {
+      return res.status(404).json({ status: 'error', message: 'Gathering records not found.' });
+    }
+
+    // Ensure the requesting user is the real creator
+    if (eventDoc.data().creatorId !== userId) {
+      return res.status(403).json({ status: 'error', message: 'Permission denied. Only hosts can dissolve gatherings.' });
+    }
+
+    // Execute absolute document wipeout
+    await eventRef.delete();
+    return res.status(200).json({ status: 'success', message: 'Event successfully dissolved.' });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+/**
+ * @route   PUT /api/events/:eventId
+ * @desc    Update an existing campus event properties
+ * @access  Public
+ */
+app.put('/api/events/:eventId', async (req, res) => {
+  const { eventId } = req.params;
+  // userId is passed to verify ownership, along with the updated form fields
+  const { userId, title, category, location, time, capacity, description } = req.body;
+
+  try {
+    const eventRef = db.collection('events').doc(eventId);
+    const eventDoc = await eventRef.get();
+
+    if (!eventDoc.exists) {
+      return res.status(404).json({ status: 'error', message: 'Event record not found.' });
+    }
+
+    const eventData = eventDoc.data();
+
+    // Ensure only the original creator can edit the details
+    if (eventData.creatorId !== userId) {
+      return res.status(403).json({ status: 'error', message: 'Permission denied. Only hosts can edit.' });
+    }
+
+    const currentAttendeesCount = eventData.attendees?.length || 0;
+    const newCapacity = Number(capacity);
+
+    // Prevent lowering capacity below the current room roster count
+    if (newCapacity < currentAttendeesCount) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Cannot lower max slots below the current number of checked-in attendees (${currentAttendeesCount} pax).`
+      });
+    }
+
+    // Assemble the updated patch layout
+    const updatedFields = {
+      title: title ? title.trim() : eventData.title,
+      category: category || eventData.category,
+      location: location ? location.trim() : eventData.location,
+      time: time || eventData.time,
+      capacity: newCapacity,
+      description: description !== undefined ? description.trim() : eventData.description,
+      // Recalculate status dynamically based on the updated seating threshold
+      status: (currentAttendeesCount >= newCapacity) ? 'full' : 'open',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    // Apply patch changes to Firestore document
+    await eventRef.update(updatedFields);
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Event parameters updated successfully!',
+      data: updatedFields
+    });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });

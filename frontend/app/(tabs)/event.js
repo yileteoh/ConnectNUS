@@ -139,7 +139,7 @@ export default function EventScreen() {
                 key={event.id} 
                 style={styles.card}
                 activeOpacity={0.8}
-                onPress={() => router.push(`/event-details/${event.id}`)} 
+                onPress={() => router.push(`../event-details/${event.id}`)} 
               >
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle} numberOfLines={2}>{event.title}</Text>

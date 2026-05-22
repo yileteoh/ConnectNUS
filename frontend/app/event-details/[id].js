@@ -7,9 +7,8 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
-import { getEventDetails, joinEvent } from '../../services/eventService';
+import { getEventDetails, joinEvent, leaveEvent, deleteEvent } from '../../services/eventService';
 
-// Make the ISO time string human-readable
 const formatEventTime = (isoString) => {
   if (!isoString) return 'Time TBD';
   const date = new Date(isoString);
@@ -19,55 +18,100 @@ const formatEventTime = (isoString) => {
 };
 
 export default function EventDetailsScreen() {
-  // Extract the dynamic route parameter (the event ID)
   const { id } = useLocalSearchParams(); 
   const router = useRouter();
   
-  // Local state management
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false); // Disables button spamming during operations
   
   const currentUserId = auth.currentUser?.uid;
 
-  // Fetch the real-time event details
   const fetchDetails = useCallback(async () => {
     try {
       const data = await getEventDetails(id);
       setEvent(data);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load event details. It might have been deleted.');
-      router.back();
+      Alert.alert('Notice', 'This activity registry is no longer available.');
+      router.replace('/(tabs)/event');
     } finally {
       setLoading(false);
     }
   }, [id, router]);
 
-  // Load details immediately when the screen mounts
   useEffect(() => {
     fetchDetails();
   }, [fetchDetails]);
 
-  // Handle the RSVP request
+  // Join Event
   const handleJoin = async () => {
-    if (!currentUserId) {
-      Alert.alert('Auth Error', 'Please log in to join events.');
-      return;
-    }
-
-    setJoining(true);
+    if (!currentUserId) return;
+    setActionLoading(true);
     try {
       await joinEvent(id, currentUserId);
-      Alert.alert('Success!', 'You have successfully secured a spot for this event!');
-      fetchDetails(); // Refresh the page silently to update the attendee list and button state
+      Alert.alert('Joined!', 'Your spot for this activity is officially secured.');
+      fetchDetails(); 
     } catch (error) {
-      Alert.alert('Join Failed', error.message || 'Could not join event.');
+      Alert.alert('Failed to Join', error.message);
     } finally {
-      setJoining(false);
+      setActionLoading(false);
     }
   };
 
-  // Full-screen loading placeholder
+  // Leave Event with verification dialog
+  const handleLeave = () => {
+    Alert.alert(
+      'Leave Event',
+      'Are you sure you want to drop out of this event list?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              await leaveEvent(id, currentUserId);
+              Alert.alert('Dropped Out', 'You have successfully left this event slot.');
+              fetchDetails(); // Force reload interface metrics
+            } catch (error) {
+              Alert.alert('Error Leaving', error.message);
+            } finally {
+              setActionLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Host Cancels Event with verification dialog
+  const handleDelete = () => {
+    Alert.alert(
+      'Cancel Event',
+      'This will cancel the event and notify all registered participants.',
+      [
+        { text: 'Keep Event', style: 'cancel' },
+        {
+          text: 'Cancel Event',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              await deleteEvent(id, currentUserId);
+              Alert.alert('Cancelled', 'Your event listing has been cancelled.', [
+                { text: 'Back to Feed', onPress: () => router.replace('/(tabs)/event') }
+              ]);
+            } catch (error) {
+              Alert.alert('Action Blocked', error.message);
+              setActionLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -78,26 +122,33 @@ export default function EventDetailsScreen() {
 
   if (!event) return null;
 
-  // Determine dynamic UI states based on the real-time attendees array
   const currentAttendees = event.attendees || [];
   const hasJoined = currentAttendees.includes(currentUserId);
+  const isCreator = event.creatorId === currentUserId; // Validate roles mapping
   const isFull = currentAttendees.length >= event.capacity;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       
-      {/* Top Navigation Header */}
+      {/* Top Navigation Header (Upgraded with conditional trash icon) */}
       <View style={styles.headerBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} disabled={actionLoading}>
           <Ionicons name="chevron-back" size={28} color="#002D5B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Event Details</Text>
-        <View style={{ width: 28 }} />
+        
+        {/* If user is the creator, grant them a deletion tool trigger inside navbar */}
+        {isCreator ? (
+          <TouchableOpacity onPress={handleDelete} style={styles.trashButton} disabled={actionLoading}>
+            <Ionicons name="trash-outline" size={24} color="#D32F2F" />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 28 }} /> // Balanced UI spacer layout
+        )}
       </View>
 
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
         
-        {/* Title and Category Badge */}
         <View style={styles.titleRow}>
           <Text style={styles.title}>{event.title}</Text>
           <View style={[styles.badge, isFull ? styles.badgeFull : styles.badgeNormal]}>
@@ -105,7 +156,6 @@ export default function EventDetailsScreen() {
           </View>
         </View>
 
-        {/* Core Information Card */}
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Ionicons name="time-outline" size={20} color="#002D5B" />
@@ -118,7 +168,6 @@ export default function EventDetailsScreen() {
           </View>
         </View>
 
-        {/* Context & Description */}
         <Text style={styles.sectionTitle}>About this event</Text>
         <View style={styles.descCard}>
           <Text style={styles.descText}>
@@ -126,7 +175,6 @@ export default function EventDetailsScreen() {
           </Text>
         </View>
 
-        {/* Attendees Roster */}
         <View style={styles.attendeeHeader}>
           <Text style={styles.sectionTitle}>Attendees</Text>
           <Text style={styles.attendeeCount}>
@@ -139,11 +187,9 @@ export default function EventDetailsScreen() {
             <TouchableOpacity 
               key={uid} 
               style={styles.avatarWrapper}
-              // Route to the public profile (Next Step!)
               onPress={() => console.log('Navigate to user profile:', uid)}
             >
-              <View style={styles.avatarPlaceholder}>
-                {/* For now, just show 'Host' for the first person, and 'User' for the rest */}
+              <View style={[styles.avatarPlaceholder, index === 0 && styles.avatarHostBorder]}>
                 <Text style={styles.avatarText}>{index === 0 ? 'Host' : 'User'}</Text>
               </View>
             </TouchableOpacity>
@@ -152,24 +198,47 @@ export default function EventDetailsScreen() {
 
       </ScrollView>
 
-      {/* Floating Bottom Action Bar for RSVP */}
+      {/* Floating Bottom Action Bar (Upgraded status engine) */}
       <View style={styles.bottomBar}>
-        {hasJoined ? (
-          <View style={[styles.joinButton, styles.joinedButton]}>
-            <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.joinButtonText}>You're In!</Text>
-          </View>
+        {isCreator ? (
+          /* State A: User is the master room manager */
+          <TouchableOpacity 
+            style={[styles.joinButton, styles.hostButton]}
+            onPress={() => router.push(`/edit-event/${id}`)}
+            disabled={actionLoading}
+          >
+            <Ionicons name="create-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.joinButtonText}>Edit Event Details</Text>
+          </TouchableOpacity>
+        ) : hasJoined ? (
+          /* State B: User is an active attendee who can decide to opt-out */
+          <TouchableOpacity 
+            style={[styles.joinButton, styles.leaveButton]} 
+            onPress={handleLeave}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <>
+                <Ionicons name="exit-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                <Text style={styles.joinButtonText}>Leave Event</Text>
+              </>
+            )}
+          </TouchableOpacity>
         ) : isFull ? (
+          /* State C: Event slots are totally occupied */
           <View style={[styles.joinButton, styles.fullButton]}>
             <Text style={styles.joinButtonText}>Event Full</Text>
           </View>
         ) : (
+          /* State D: Space is open, standard RSVP gate entry point */
           <TouchableOpacity 
             style={styles.joinButton} 
             onPress={handleJoin}
-            disabled={joining}
+            disabled={actionLoading}
           >
-            {joining ? (
+            {actionLoading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
               <Text style={styles.joinButtonText}>Request to Join</Text>
@@ -186,6 +255,7 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderColor: '#F0F0F0' },
   backButton: { padding: 4 },
+  trashButton: { padding: 4 }, // Aligned for top-right navigation control
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#002D5B' },
   scrollContainer: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 100 },
@@ -206,11 +276,14 @@ const styles = StyleSheet.create({
   attendeeCount: { fontSize: 14, color: '#666', fontWeight: '600' },
   attendeeList: { flexDirection: 'row', flexWrap: 'wrap' },
   avatarWrapper: { marginRight: 10, marginBottom: 10 },
-  avatarPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#002D5B', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
+  avatarPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#A8C5E6', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
+  avatarHostBorder: { backgroundColor: '#002D5B' }, // Set distinct color theme for event host organizer
   avatarText: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 15, borderTopWidth: 1, borderColor: '#EAEAEA', paddingBottom: Platform.OS === 'ios' ? 30 : 15 },
   joinButton: { backgroundColor: '#F28C28', flexDirection: 'row', borderRadius: 10, paddingVertical: 16, justifyContent: 'center', alignItems: 'center' },
-  joinedButton: { backgroundColor: '#28A745' }, // Green for joined
-  fullButton: { backgroundColor: '#CCCCCC' }, // Grey for full
+  fullButton: { backgroundColor: '#CCCCCC' }, 
+  hostButton: { backgroundColor: '#002D5B' }, // Premium Navy color representing authorized ownership
+  leaveButton: { backgroundColor: '#D32F2F' }, // Vibrant warning red color for drop-out triggers
+  
   joinButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
 });

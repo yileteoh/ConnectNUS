@@ -89,3 +89,57 @@ export const joinEvent = async (eventId, userId) => {
     throw error;
   }
 };
+
+// Dispatch an exit request to safely remove a user from an event slots registry
+export const leaveEvent = async (eventId, userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/events/${eventId}/leave`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result;
+  } catch (error) {
+    console.error('Network catch trace within leaveEvent service:', error);
+    throw error;
+  }
+};
+
+// Dispatch a deletion destruction request to dissolve a campus gathering permanently
+export const deleteEvent = async (eventId, userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/events/${eventId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }), // Verified by backend ownership rule
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result;
+  } catch (error) {
+    console.error('Network catch trace within deleteEvent service:', error);
+    throw error;
+  }
+};
+
+// Dispatch a modification data request to update an existing event attributes
+export const updateEvent = async (eventId, userId, updatedData) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/events/${eventId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, ...updatedData }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result.data;
+  } catch (error) {
+    console.error('Network catch trace within updateEvent service layer:', error);
+    throw error;
+  }
+};
