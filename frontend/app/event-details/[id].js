@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  Alert, ActivityIndicator, SafeAreaView, Platform, StatusBar 
+  Alert, ActivityIndicator, SafeAreaView, Platform, StatusBar, Image 
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -204,7 +204,7 @@ export default function EventDetailsScreen() {
                 {attendee.profilePicUrl ? (
                   <Image source={{ uri: attendee.profilePicUrl }} style={styles.avatarImage} />
                 ) : (
-                  <Image source={require('../../assets/logo.png')} style={styles.avatarImage} /> // Local default assets image fallback
+                  <Image source={require('../../assets/profile_image.jpg')} style={styles.avatarImage} /> // Local default assets image fallback
                 )}
               </View>
               <Text style={styles.attendeeNameLabel} numberOfLines={1}>
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   hostButton: { backgroundColor: '#002D5B' }, // Premium Navy color representing authorized ownership
   leaveButton: { backgroundColor: '#D32F2F' }, // Vibrant warning red color for drop-out triggers
   joinButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  attendeeNameLabel: { fontSize: 11, color: '#555555', textAlign: 'center', marginTop: 4, fontWeight: '500', width: 55 },
+  attendeeNameLabel: { fontSize: 11, color: '#555555', textAlign: 'center', marginTop: 4, fontWeight: '500', width: 55, marginLeft: -3 },
   avatarCircleFrame: { 
     width: 50, 
     height: 50, 
@@ -320,14 +320,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover'
-  },
-  attendeeNameLabel: {
-    fontSize: 11,
-    color: '#555555',
-    textAlign: 'center',
-    marginTop: 4,
-    fontWeight: '500',
-    width: 55, 
   },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 15, borderTopWidth: 1, borderColor: '#EAEAEA', paddingBottom: Platform.OS === 'ios' ? 30 : 15 },
   joinButton: { backgroundColor: '#F28C28', flexDirection: 'row', borderRadius: 10, paddingVertical: 16, justifyContent: 'center', alignItems: 'center' },
