@@ -259,10 +259,14 @@ app.get('/api/events', async (req, res) => {
     const hydratedEvents = await Promise.all(events.map(async (event) => {
       try {
         const creatorDoc = await db.collection('users').doc(event.creatorId).get();
-        const creatorName = creatorDoc.exists ? (creatorDoc.data().name || 'NUS Student') : 'NUS Student';
-        return { ...event, creatorName };
+        const creatorData = creatorDoc.exists ? creatorDoc.data() : null;
+        return { 
+          ...event, 
+          creatorName: creatorData?.name || 'NUS Student',
+          creatorPicUrl: creatorData?.profilePicUrl || '' // Pull user customized avatar URL
+        };
       } catch (err) {
-        return { ...event, creatorName: 'NUS Student' };
+        return { ...event, creatorName: 'NUS Student', creatorPicUrl: '' };
       }
     }));
 
@@ -303,12 +307,13 @@ app.get('/api/events/:eventId', async (req, res) => {
             uid: uid,
             name: userData.name || 'NUS Student',
             faculty: userData.faculty || 'Unknown Faculty',
-            year: userData.year || ''
+            year: userData.year || '',
+            profilePicUrl: userData.profilePicUrl || '' // Inject customization image links
           };
         }
-        return { uid, name: 'NUS Student', faculty: 'Unknown Faculty', year: '' };
+        return { uid, name: 'NUS Student', faculty: 'Unknown Faculty', year: '', profilePicUrl: '' };
       } catch (err) {
-        return { uid, name: 'NUS Student', faculty: 'Unknown Faculty', year: '' };
+        return { uid, name: 'NUS Student', faculty: 'Unknown Faculty', year: '', profilePicUrl: '' };
       }
     }));
 
