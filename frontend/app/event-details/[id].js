@@ -43,6 +43,17 @@ export default function EventDetailsScreen() {
     fetchDetails();
   }, [fetchDetails]);
 
+  // Self-Click Filter Router Interceptor
+  const handleAttendeeNavigation = (attendeeUid) => {
+    if (attendeeUid === currentUserId) {
+      // If user clicks on themselves, reroute them back to their own fully editable profile tab dashboard
+      router.push('/(tabs)/profile');
+    } else {
+      // If user clicks on a peer classmate, route to the dynamic public view-only page template
+      router.push(`/user/${attendeeUid}`);
+    }
+  };
+
   // Join Event
   const handleJoin = async () => {
     if (!currentUserId) return;
@@ -187,15 +198,17 @@ export default function EventDetailsScreen() {
             <TouchableOpacity 
               key={attendee.uid} 
               style={styles.avatarWrapper}
-              onPress={() => router.push(`/user/${attendee.uid}`)} // Push dynamic routing ID
+              onPress={() => handleAttendeeNavigation(attendee.uid)} // Bound to the self-click routing blocker
             >
-              <View style={[styles.avatarPlaceholder, index === 0 && styles.avatarHostBorder]}>
-                <Text style={styles.avatarText} numberOfLines={1}>
-                  {index === 0 ? 'Host' : attendee.name?.substring(0, 2).toUpperCase() || 'ST'}
-                </Text>
+              <View style={[styles.avatarCircleFrame, index === 0 && styles.avatarHostBorder]}>
+                {attendee.profilePicUrl ? (
+                  <Image source={{ uri: attendee.profilePicUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Image source={require('../../assets/logo.png')} style={styles.avatarImage} /> // Local default assets image fallback
+                )}
               </View>
               <Text style={styles.attendeeNameLabel} numberOfLines={1}>
-                {attendee.name}
+                {attendee.uid === currentUserId ? 'You' : attendee.name}
               </Text>
             </TouchableOpacity>
           ))}
@@ -290,5 +303,36 @@ const styles = StyleSheet.create({
   hostButton: { backgroundColor: '#002D5B' }, // Premium Navy color representing authorized ownership
   leaveButton: { backgroundColor: '#D32F2F' }, // Vibrant warning red color for drop-out triggers
   joinButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  attendeeNameLabel: { fontSize: 11, color: '#555555', textAlign: 'center', marginTop: 4, fontWeight: '500', width: 55 }
+  attendeeNameLabel: { fontSize: 11, color: '#555555', textAlign: 'center', marginTop: 4, fontWeight: '500', width: 55 },
+  avatarCircleFrame: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25, 
+    borderWidth: 2, 
+    borderColor: '#EAEAEA', 
+    overflow: 'hidden',
+    backgroundColor: '#FAFAFA'
+  },
+  avatarHostBorder: { 
+    borderColor: '#002D5B'
+  }, 
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover'
+  },
+  attendeeNameLabel: {
+    fontSize: 11,
+    color: '#555555',
+    textAlign: 'center',
+    marginTop: 4,
+    fontWeight: '500',
+    width: 55, 
+  },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 15, borderTopWidth: 1, borderColor: '#EAEAEA', paddingBottom: Platform.OS === 'ios' ? 30 : 15 },
+  joinButton: { backgroundColor: '#F28C28', flexDirection: 'row', borderRadius: 10, paddingVertical: 16, justifyContent: 'center', alignItems: 'center' },
+  fullButton: { backgroundColor: '#CCCCCC' }, 
+  hostButton: { backgroundColor: '#002D5B' }, 
+  leaveButton: { backgroundColor: '#D32F2F' }, 
+  joinButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
 });

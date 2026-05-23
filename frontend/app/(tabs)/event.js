@@ -166,9 +166,17 @@ export default function EventScreen() {
                 <View style={styles.cardBottomRow}>
                   {/* Avatar Stack Placeholder */}
                   <View style={styles.avatarStack}>
-                    <View style={styles.stackedAvatarPlaceholder}>
-                      <Ionicons name="person" size={14} color="#FFF" />
-                    </View>
+                    {event.creatorPicUrl ? (
+                      <Image 
+                        source={{ uri: event.creatorPicUrl }} 
+                        style={styles.stackedAvatarImage} 
+                      />
+                    ) : (
+                      <Image 
+                        source={require('../../assets/profile_image.jpg')}
+                        style={styles.stackedAvatarImage} 
+                      />
+                    )}
                     <Text style={styles.organizerText}>
                       {event.creatorName || 'Host'} + {Math.max(0, currentCount - 1)}
                     </Text>
@@ -276,5 +284,13 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 20, right: 20, width: 56, height: 56,
     borderRadius: 28, backgroundColor: '#F28C28', justifyContent: 'center', alignItems: 'center',
     shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5
+  },
+  stackedAvatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#EAEAEA'
   }
 });
