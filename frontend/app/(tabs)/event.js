@@ -169,7 +169,9 @@ export default function EventScreen() {
                     <View style={styles.stackedAvatarPlaceholder}>
                       <Ionicons name="person" size={14} color="#FFF" />
                     </View>
-                    <Text style={styles.organizerText}>Host + {Math.max(0, currentCount - 1)}</Text>
+                    <Text style={styles.organizerText}>
+                      {event.creatorName || 'Host'} + {Math.max(0, currentCount - 1)}
+                    </Text>
                   </View>
 
                   {/* Progress Bar Info */}

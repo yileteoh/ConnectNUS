@@ -123,7 +123,7 @@ export default function EventDetailsScreen() {
   if (!event) return null;
 
   const currentAttendees = event.attendees || [];
-  const hasJoined = currentAttendees.includes(currentUserId);
+  const hasJoined = currentAttendees.some(attendee => attendee.uid === currentUserId);
   const isCreator = event.creatorId === currentUserId; // Validate roles mapping
   const isFull = currentAttendees.length >= event.capacity;
 
@@ -183,15 +183,20 @@ export default function EventDetailsScreen() {
         </View>
         
         <View style={styles.attendeeList}>
-          {currentAttendees.map((uid, index) => (
+          {currentAttendees.map((attendee, index) => (
             <TouchableOpacity 
-              key={uid} 
+              key={attendee.uid} 
               style={styles.avatarWrapper}
-              onPress={() => console.log('Navigate to user profile:', uid)}
+              onPress={() => router.push(`/user/${attendee.uid}`)} // Push dynamic routing ID
             >
               <View style={[styles.avatarPlaceholder, index === 0 && styles.avatarHostBorder]}>
-                <Text style={styles.avatarText}>{index === 0 ? 'Host' : 'User'}</Text>
+                <Text style={styles.avatarText} numberOfLines={1}>
+                  {index === 0 ? 'Host' : attendee.name?.substring(0, 2).toUpperCase() || 'ST'}
+                </Text>
               </View>
+              <Text style={styles.attendeeNameLabel} numberOfLines={1}>
+                {attendee.name}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -284,6 +289,6 @@ const styles = StyleSheet.create({
   fullButton: { backgroundColor: '#CCCCCC' }, 
   hostButton: { backgroundColor: '#002D5B' }, // Premium Navy color representing authorized ownership
   leaveButton: { backgroundColor: '#D32F2F' }, // Vibrant warning red color for drop-out triggers
-  
-  joinButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
+  joinButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  attendeeNameLabel: { fontSize: 11, color: '#555555', textAlign: 'center', marginTop: 4, fontWeight: '500', width: 55 }
 });

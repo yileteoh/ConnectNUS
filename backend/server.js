@@ -256,9 +256,19 @@ app.get('/api/events', async (req, res) => {
       return timeB - timeA;
     });
 
+    const hydratedEvents = await Promise.all(events.map(async (event) => {
+      try {
+        const creatorDoc = await db.collection('users').doc(event.creatorId).get();
+        const creatorName = creatorDoc.exists ? (creatorDoc.data().name || 'NUS Student') : 'NUS Student';
+        return { ...event, creatorName };
+      } catch (err) {
+        return { ...event, creatorName: 'NUS Student' };
+      }
+    }));
+
     return res.status(200).json({
       status: 'success',
-      data: events
+      data: hydratedEvents
     });
 
   } catch (error) {
@@ -281,9 +291,30 @@ app.get('/api/events/:eventId', async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Event not found.' });
     }
 
+    const eventData = doc.data();
+
+    // Loop through attendee UIDs and fetch their actual profiles for frontend interaction
+    const hydratedAttendees = await Promise.all((eventData.attendees || []).map(async (uid) => {
+      try {
+        const userDoc = await db.collection('users').doc(uid).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          return {
+            uid: uid,
+            name: userData.name || 'NUS Student',
+            faculty: userData.faculty || 'Unknown Faculty',
+            year: userData.year || ''
+          };
+        }
+        return { uid, name: 'NUS Student', faculty: 'Unknown Faculty', year: '' };
+      } catch (err) {
+        return { uid, name: 'NUS Student', faculty: 'Unknown Faculty', year: '' };
+      }
+    }));
+
     return res.status(200).json({ 
       status: 'success', 
-      data: { id: doc.id, ...doc.data() } 
+      data: { id: doc.id, ...eventData, attendees: hydratedAttendees }
     });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
