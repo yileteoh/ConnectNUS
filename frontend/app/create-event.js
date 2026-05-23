@@ -71,8 +71,15 @@ export default function CreateEventScreen() {
       return;
     }
 
-    if (isNaN(capNumber) || capNumber <= 0) {
-      Alert.alert('Invalid Capacity', 'Please enter a valid number of slots (e.g., 4).');
+    const selectedTimeMs = new Date(isoTime).getTime();
+    const currentTimeMs = Date.now();
+    if (selectedTimeMs <= currentTimeMs) {
+      Alert.alert('Invalid Time', 'Events must be scheduled for a future time.');
+      return;
+    }
+
+    if (isNaN(capNumber) || capNumber <= 1) {
+      Alert.alert('Invalid Capacity', 'An event must have at least 2 slots (including yourself).');
       return;
     }
 
@@ -197,13 +204,14 @@ export default function CreateEventScreen() {
                 is24Hour={true}
                 display="default"
                 onChange={handleDateChange}
+                minimumDate={new Date()}
               />
             )}
 
             <Text style={styles.formLabel}>Max Capacity Limit (Total Slots)</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="5"
+              placeholder="At least 2 (including yourself)"
               placeholderTextColor="#999"
               value={capacity}
               onChangeText={setCapacity}

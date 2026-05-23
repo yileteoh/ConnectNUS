@@ -92,8 +92,15 @@ export default function EditEventScreen() {
       return;
     }
 
-    if (isNaN(capNumber) || capNumber <= 0) {
-      Alert.alert('Invalid Capacity', 'Please enter a valid number of slots (e.g., 4).');
+    const selectedTimeMs = new Date(isoTime).getTime();
+    const currentTimeMs = Date.now();
+    if (selectedTimeMs <= currentTimeMs) {
+      Alert.alert('Invalid Time', 'Events must be scheduled for a future time.');
+      return;
+    }
+
+    if (isNaN(capNumber) || capNumber <= 1) {
+      Alert.alert('Invalid Capacity', 'An event must have at least 2 slots (including yourself).');
       return;
     }
 
@@ -144,7 +151,13 @@ export default function EditEventScreen() {
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
           <View style={styles.formSection}>
             <Text style={styles.formLabel}>Event Title</Text>
-            <TextInput style={styles.textInput} value={title} onChangeText={setTitle} />
+            <TextInput
+              style={styles.textInput}
+              placeholder="GEA1000 Study Group"
+              placeholderTextColor="#999"
+              value={title}
+              onChangeText={setTitle}
+            />
 
             <Text style={styles.formLabel}>Category</Text>
             <View style={styles.chipGrid}>
@@ -163,8 +176,13 @@ export default function EditEventScreen() {
             </View>
 
             <Text style={styles.formLabel}>Location</Text>
-            <TextInput style={styles.textInput} value={location} onChangeText={setLocation} />
-
+            <TextInput
+                style={styles.textInput}
+                placeholder="Central Library Level 4"
+                placeholderTextColor="#999"
+                value={location}
+                onChangeText={setLocation}
+            />
             <Text style={styles.formLabel}>Date & Time Window</Text>
             
             <View style={styles.dateTimeContainer}>
@@ -186,17 +204,27 @@ export default function EditEventScreen() {
             </View>
 
             {showPicker && (
-              <DateTimePicker value={date} mode={pickerMode} is24Hour={true} display="default" onChange={handleDateChange} />
+              <DateTimePicker value={date} mode={pickerMode} is24Hour={true} display="default" onChange={handleDateChange} minimumDate={new Date()} />
             )}
 
             <Text style={styles.formLabel}>Max Capacity Limit (Total Slots)</Text>
-            <TextInput style={styles.textInput} value={capacity} onChangeText={setCapacity} keyboardType="numeric" maxLength={3} />
+            <TextInput
+              style={styles.textInput}
+              placeholder="At least 2 (including yourself)"
+              placeholderTextColor="#999"
+              value={capacity}
+              onChangeText={setCapacity}
+              keyboardType="numeric"
+              maxLength={5}
+            />
           </View>
 
           <View style={styles.formSection}>
             <Text style={styles.formLabel}>Event Description (Optional)</Text>
             <TextInput
               style={[styles.textInput, styles.textAreaInput]}
+              placeholder="Provide your event context to help fellow students join!"
+              placeholderTextColor="#999"
               value={description}
               onChangeText={setDescription}
               multiline={true}
