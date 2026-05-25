@@ -64,8 +64,14 @@ export default function EditForumScreen() {
 
         <ScrollView style={styles.scrollContainer} contentContainerStyle={{ padding: 20 }}>
           <View style={styles.formSection}>
-            <Text style={styles.formLabel}>Thread Title</Text>
-            <TextInput style={styles.textInput} value={title} onChangeText={setTitle} />
+            <Text style={styles.formLabel}>Title</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="CS3231 difficulty level?"
+              placeholderTextColor="#999"
+              value={title}
+              onChangeText={setTitle}
+            />
             <Text style={styles.formLabel}>Topic Category</Text>
             <View style={styles.chipGrid}>
               {FORUM_CATEGORIES.map((cat) => (
@@ -77,7 +83,16 @@ export default function EditForumScreen() {
           </View>
           <View style={styles.formSection}>
             <Text style={styles.formLabel}>Discussion Content</Text>
-            <TextInput style={[styles.textInput, styles.textAreaInput]} value={content} onChangeText={setContent} multiline textAlignVertical="top" />
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput]}
+              placeholder="Share your thoughts, ask questions, or provide resources..."
+              placeholderTextColor="#999"
+              value={content}
+              onChangeText={setContent}
+              multiline={true}
+              numberOfLines={8}
+              textAlignVertical="top"
+            />
           </View>
 
           <TouchableOpacity style={styles.publishButton} onPress={handleSave} disabled={submitting}>

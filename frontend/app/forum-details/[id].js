@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
 import { 
   getForumDetails, getPostComments, addComment, togglePostLike, 
-  deleteForumPost, updateComment, deleteComment 
+  deleteForumPost, updateComment, deleteComment, toggleCommentLike
 } from '../../services/forumService';
 
 const getRelativeTime = (timeData) => {
@@ -114,6 +114,30 @@ export default function ForumDetailsScreen() {
     ]);
   };
 
+  const handleToggleCommentLike = async (commentId) => {
+    if (!currentUserId) return;
+
+    // Optimistically update the UI instantly
+    setComments(currentComments => currentComments.map(comment => {
+      if (comment.id === commentId) {
+        const likes = comment.likes || [];
+        const isLiked = likes.includes(currentUserId);
+        const newLikes = isLiked 
+          ? likes.filter(uid => uid !== currentUserId) 
+          : [...likes, currentUserId];
+        return { ...comment, likes: newLikes };
+      }
+      return comment;
+    }));
+
+    try {
+      await toggleCommentLike(id, commentId, currentUserId);
+    } catch (error) {
+      // Silently revert if the server request fails
+      setComments(await getPostComments(id));
+    }
+  };
+
   const saveCommentEdit = async (commentId) => {
     if (!editCommentText.trim()) return;
     try {
@@ -141,7 +165,7 @@ export default function ForumDetailsScreen() {
           {post.creatorPicUrl ? (
             <Image source={{ uri: post.creatorPicUrl }} style={styles.authorAvatar} />
           ) : (
-            <Image source={require('../../assets/logo.png')} style={styles.authorAvatar} />
+            <Image source={require('../../assets/profile_image.jpg')} style={styles.authorAvatar} />
           )}
           <View>
             <Text style={styles.authorName}>{isPostCreator ? 'You' : post.creatorName}</Text>
@@ -199,12 +223,15 @@ export default function ForumDetailsScreen() {
             const isCommentCreator = item.userId === currentUserId;
             const isEditing = editingCommentId === item.id;
 
+            const commentLikes = item.likes || [];
+            const isCommentLiked = commentLikes.includes(currentUserId);
+
             return (
               <View style={styles.commentItem}>
                 <TouchableOpacity onPress={() => handleProfileNav(item.userId)}>
                   {item.userPicUrl ? (
                     <Image source={{ uri: item.userPicUrl }} style={styles.commentAvatar} />
-                  ) : <Image source={require('../../assets/logo.png')} style={styles.commentAvatar} />}
+                  ) : <Image source={require('../../assets/profile_image.jpg')} style={styles.commentAvatar} />}
                 </TouchableOpacity>
                 
                 <View style={styles.commentBubble}>
@@ -245,7 +272,27 @@ export default function ForumDetailsScreen() {
                       </View>
                     </View>
                   ) : (
+                    <>
                     <Text style={styles.commentText}>{item.text}</Text>
+
+                    <View style={styles.commentFooter}>
+                        <TouchableOpacity 
+                          style={styles.commentLikeBtn} 
+                          onPress={() => handleToggleCommentLike(item.id)}
+                        >
+                          <Ionicons 
+                            name={isCommentLiked ? "heart" : "heart-outline"} 
+                            size={14} 
+                            color={isCommentLiked ? "#E1306C" : "#888"} 
+                          />
+                          {commentLikes.length > 0 && (
+                            <Text style={[styles.commentLikeText, isCommentLiked && { color: '#E1306C', fontWeight: 'bold' }]}>
+                              {commentLikes.length}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </> 
                   )}
                 </View>
               </View>
@@ -277,7 +324,7 @@ const styles = StyleSheet.create({
   headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderColor: '#F0F0F0' },
   backButton: { padding: 4 },
   headerIcon: { padding: 4, marginLeft: 12 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#002D5B' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#002D5B', position: 'absolute', left: 0, right: 0, textAlign: 'center' },
   listContent: { paddingBottom: 20 },
   postBodyCard: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 10 },
   authorMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

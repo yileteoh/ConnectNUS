@@ -803,6 +803,35 @@ app.delete('/api/forums/:postId/comments/:commentId', async (req, res) => {
   } catch (error) { return res.status(500).json({ status: 'error', message: error.message }); }
 });
 
+/**
+ * @route   PUT /api/forums/:postId/comments/:commentId/toggle-like
+ * @desc    Add or remove user from a specific comment's likes array
+ */
+app.put('/api/forums/:postId/comments/:commentId/toggle-like', async (req, res) => {
+  const { postId, commentId } = req.params;
+  const { userId } = req.body;
+  try {
+    const commentRef = db.collection('forums').doc(postId).collection('comments').doc(commentId);
+    const doc = await commentRef.get();
+    
+    if (!doc.exists) return res.status(404).json({ status: 'error', message: 'Comment not found.' });
+
+    const likes = doc.data().likes || [];
+    const isLiked = likes.includes(userId);
+
+    // Toggle logic: if already liked, remove. If not, add.
+    await commentRef.update({
+      likes: isLiked 
+        ? admin.firestore.FieldValue.arrayRemove(userId)
+        : admin.firestore.FieldValue.arrayUnion(userId)
+    });
+
+    return res.status(200).json({ status: 'success', message: 'Comment like toggled' });
+  } catch (error) { 
+    return res.status(500).json({ status: 'error', message: error.message }); 
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });

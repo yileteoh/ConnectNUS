@@ -154,3 +154,18 @@ export const deleteComment = async (postId, commentId, userId) => {
     return result;
   } catch (error) { throw error; }
 };
+
+export const toggleCommentLike = async (postId, commentId, userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/forums/${postId}/comments/${commentId}/toggle-like`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result;
+  } catch (error) { 
+    throw error; 
+  }
+};
