@@ -48,7 +48,7 @@ export default function CreateForumScreen() {
       await createNewForumPost(transmissionPayload);
 
       Alert.alert('Success!', 'Your discussion has been posted to the forum.', [
-        { text: 'Awesome', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error) {
       console.error('Failed to submit forum payload:', error);
@@ -74,10 +74,10 @@ export default function CreateForumScreen() {
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
           
           <View style={styles.formSection}>
-            <Text style={styles.formLabel}>Thread Title</Text>
+            <Text style={styles.formLabel}>Title</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="E.g., Tips for CS2030S Finals?"
+              placeholder="CS3231 difficulty level?"
               placeholderTextColor="#999"
               value={title}
               onChangeText={setTitle}

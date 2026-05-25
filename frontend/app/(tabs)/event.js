@@ -19,6 +19,7 @@ import Header from '../../components/Header';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { fetchGlobalEvents } from '../../services/eventService';
 import { EVENT_CATEGORIES } from '../../constants/eventOptions';
+import { auth } from '../../firebaseConfig';
 
 // Format the ISO time string back to a readable UI format
 const formatEventTime = (isoString) => {
@@ -32,6 +33,8 @@ const formatEventTime = (isoString) => {
 export default function EventScreen() {
   
   const router = useRouter();
+
+  const currentUserId = auth.currentUser?.uid;
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +181,7 @@ export default function EventScreen() {
                       />
                     )}
                     <Text style={styles.organizerText}>
-                      {event.creatorName || 'Host'} + {Math.max(0, currentCount - 1)}
+                      {event.creatorId === currentUserId ? 'You' : (event.creatorName || 'Host')} + {Math.max(0, currentCount - 1)}
                     </Text>
                   </View>
 
@@ -230,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAEAEA', paddingHorizontal: 16, paddingVertical: 8,
     borderRadius: 20, marginRight: 10, justifyContent: 'center', alignItems: 'center', height: 35
   },
-  filterChipActive: { backgroundColor: '#F28C28' },
+  filterChipActive: { backgroundColor: '#002D5B' },
   filterChipText: { color: '#555', fontSize: 14, fontWeight: '500' },
   filterChipTextActive: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 

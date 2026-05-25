@@ -102,3 +102,55 @@ export const addComment = async (postId, userId, text) => {
     throw error;
   }
 };
+
+export const updateForumPost = async (postId, userId, updatedData) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/forums/${postId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, ...updatedData }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result;
+  } catch (error) { throw error; }
+};
+
+export const deleteForumPost = async (postId, userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/forums/${postId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result;
+  } catch (error) { throw error; }
+};
+
+export const updateComment = async (postId, commentId, userId, text) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/forums/${postId}/comments/${commentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, text }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result;
+  } catch (error) { throw error; }
+};
+
+export const deleteComment = async (postId, commentId, userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/forums/${postId}/comments/${commentId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result;
+  } catch (error) { throw error; }
+};

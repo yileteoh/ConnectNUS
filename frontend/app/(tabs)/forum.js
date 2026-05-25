@@ -107,7 +107,7 @@ export default function ForumScreen() {
         <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
         <TextInput 
           style={styles.searchInput}
-          placeholder="Search discussions, modules, or peers"
+          placeholder="Search discussions..."
           placeholderTextColor="#888"
         />
       </View>
@@ -139,6 +139,7 @@ export default function ForumScreen() {
         {loading && !refreshing ? (
           <View style={styles.centerLoading}>
             <ActivityIndicator size="large" color="#002D5B" />
+            <Text style={styles.loadingText}>Loading discussions...</Text>
           </View>
         ) : forums.length === 0 ? (
           <View style={styles.emptyState}>
@@ -156,7 +157,6 @@ export default function ForumScreen() {
                 key={post.id} 
                 style={styles.postCard}
                 activeOpacity={0.8}
-                // We will build this detail page in the next step!
                 onPress={() => router.push(`/forum-details/${post.id}`)} 
               >
                 <View style={styles.postHeader}>
@@ -184,7 +184,7 @@ export default function ForumScreen() {
                     {post.creatorPicUrl ? (
                       <Image source={{ uri: post.creatorPicUrl }} style={styles.authorAvatar} />
                     ) : (
-                      <Image source={require('../../assets/logo.png')} style={styles.authorAvatar} />
+                      <Image source={require('../../assets/profile_image.jpg')} style={styles.authorAvatar} />
                     )}
                     <Text style={styles.authorName}>{post.creatorId === currentUserId ? 'You' : post.creatorName}</Text>
                   </TouchableOpacity>
@@ -229,11 +229,12 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 15, color: '#333' },
   filterScroll: { marginBottom: 15, maxHeight: 40 },
   filterChip: { backgroundColor: '#E6E8EA', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 10, justifyContent: 'center', alignItems: 'center', height: 35 },
-  filterChipActive: { backgroundColor: '#002D5B' },
+  filterChipActive: { backgroundColor: '#F28C28' },
   filterChipText: { color: '#555', fontSize: 14, fontWeight: '500' },
   filterChipTextActive: { color: '#FFF', fontSize: 14, fontWeight: '600' },
   feedContainer: { flex: 1, paddingHorizontal: 15 },
   centerLoading: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
+  loadingText: { marginTop: 12, color: '#666', fontSize: 14 },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 },
   emptyStateTitle: { fontSize: 18, fontWeight: 'bold', color: '#002D5B', marginTop: 12 },
   emptyStateSub: { fontSize: 14, color: '#666', marginTop: 6, textAlign: 'center' },

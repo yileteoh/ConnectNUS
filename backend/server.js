@@ -728,6 +728,81 @@ app.post('/api/forums/:postId/comments', async (req, res) => {
   }
 });
 
+/**
+ * @route   PUT /api/forums/:postId
+ * @desc    Edit an existing forum post
+ */
+app.put('/api/forums/:postId', async (req, res) => {
+  const { postId } = req.params;
+  const { userId, title, category, content } = req.body;
+  try {
+    const postRef = db.collection('forums').doc(postId);
+    const doc = await postRef.get();
+    if (!doc.exists) return res.status(404).json({ status: 'error', message: 'Post not found.' });
+    if (doc.data().creatorId !== userId) return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+
+    await postRef.update({
+      title, category, content,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return res.status(200).json({ status: 'success', message: 'Post updated' });
+  } catch (error) { return res.status(500).json({ status: 'error', message: error.message }); }
+});
+
+/**
+ * @route   DELETE /api/forums/:postId
+ * @desc    Delete a forum post
+ */
+app.delete('/api/forums/:postId', async (req, res) => {
+  const { postId } = req.params;
+  const { userId } = req.body;
+  try {
+    const postRef = db.collection('forums').doc(postId);
+    const doc = await postRef.get();
+    if (!doc.exists) return res.status(404).json({ status: 'error', message: 'Post not found.' });
+    if (doc.data().creatorId !== userId) return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+
+    await postRef.delete();
+    return res.status(200).json({ status: 'success', message: 'Post deleted' });
+  } catch (error) { return res.status(500).json({ status: 'error', message: error.message }); }
+});
+
+/**
+ * @route   PUT /api/forums/:postId/comments/:commentId
+ * @desc    Edit a specific comment
+ */
+app.put('/api/forums/:postId/comments/:commentId', async (req, res) => {
+  const { postId, commentId } = req.params;
+  const { userId, text } = req.body;
+  try {
+    const commentRef = db.collection('forums').doc(postId).collection('comments').doc(commentId);
+    const doc = await commentRef.get();
+    if (!doc.exists) return res.status(404).json({ status: 'error', message: 'Comment not found.' });
+    if (doc.data().userId !== userId) return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+
+    await commentRef.update({ text, isEdited: true });
+    return res.status(200).json({ status: 'success', message: 'Comment updated' });
+  } catch (error) { return res.status(500).json({ status: 'error', message: error.message }); }
+});
+
+/**
+ * @route   DELETE /api/forums/:postId/comments/:commentId
+ * @desc    Delete a specific comment
+ */
+app.delete('/api/forums/:postId/comments/:commentId', async (req, res) => {
+  const { postId, commentId } = req.params;
+  const { userId } = req.body;
+  try {
+    const commentRef = db.collection('forums').doc(postId).collection('comments').doc(commentId);
+    const doc = await commentRef.get();
+    if (!doc.exists) return res.status(404).json({ status: 'error', message: 'Comment not found.' });
+    if (doc.data().userId !== userId) return res.status(403).json({ status: 'error', message: 'Unauthorized' });
+
+    await commentRef.delete();
+    return res.status(200).json({ status: 'success', message: 'Comment deleted' });
+  } catch (error) { return res.status(500).json({ status: 'error', message: error.message }); }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
