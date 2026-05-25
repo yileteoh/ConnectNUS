@@ -338,7 +338,6 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: 'row', alignItems: 'center', marginRight: 24 },
   actionText: { fontSize: 14, color: '#666', marginLeft: 6, fontWeight: '500' },
   sectionDivider: { height: 8, backgroundColor: '#FAFAFA', marginTop: 16, marginHorizontal: -20 },
-  
   commentItem: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 16 },
   commentAvatar: { width: 36, height: 36, borderRadius: 18, marginRight: 12, borderWidth: 1, borderColor: '#EAEAEA' },
   commentBubble: { flex: 1, backgroundColor: '#FFFFFF', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#EAEAEA' },
@@ -348,16 +347,17 @@ const styles = StyleSheet.create({
   commentActions: { flexDirection: 'row' },
   miniBtn: { marginLeft: 12, padding: 2 },
   commentText: { fontSize: 14, color: '#555', lineHeight: 20 },
-  
   inlineEditBox: { marginTop: 4 },
   inlineInput: { backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 8, fontSize: 13, color: '#333', minHeight: 60, textAlignVertical: 'top' },
   inlineEditActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 8 },
   cancelText: { color: '#666', fontSize: 13, marginRight: 16, fontWeight: '600' },
   saveBtn: { backgroundColor: '#002D5B', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   saveText: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
-  
   inputContainer: { flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   textInput: { flex: 1, backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#EAEAEA', borderRadius: 20, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, fontSize: 15, maxHeight: 100, color: '#333' },
   sendButton: { backgroundColor: '#F28C28', width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginLeft: 10, marginBottom: 2 },
-  sendButtonDisabled: { backgroundColor: '#CCC' }
+  sendButtonDisabled: { backgroundColor: '#CCC' },
+  commentFooter: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6 },
+  commentLikeBtn: { flexDirection: 'row', alignItems: 'center', padding: 4 },
+  commentLikeText: { fontSize: 12, color: '#888', marginLeft: 4 }
 });
