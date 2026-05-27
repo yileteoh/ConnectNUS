@@ -5,7 +5,7 @@ const app = require('../server'); // Import your Express server
 describe('Integration Testing', () => {
   
   // Test 1: Fetching all forums
-  it('GET /api/forums - should fetch all forums successfully', async () => {
+  test('GET /api/forums - should fetch all forums successfully', async () => {
     const response = await request(app).get('/api/forums');
     
     // Expect the HTTP status code to be 200 (OK)
@@ -19,9 +19,28 @@ describe('Integration Testing', () => {
   });
 
   // Test 2: Error handling for invalid route
-  it('GET /api/invalid-route - should return 404', async () => {
+  test('GET /api/invalid-route - should return 404', async () => {
     const response = await request(app).get('/api/invalid-route');
     expect(response.statusCode).toBe(404);
   });
+
+  // Test 3: Creating a new forum post
+  test('POST /api/forums - should create a new discussion thread', async () => {
+      const newPost = {
+        title: "Integration Test Post",
+        content: "Testing the API creation logic",
+        category: "Study",
+        creatorId: "test-user-id-123"
+      };
+
+      const response = await request(app)
+        .post('/api/forums')
+        .send(newPost);
+      
+      expect(response.statusCode).toBe(201); // 201 Created
+      expect(response.body.status).toBe('success');
+      expect(response.body.data).toHaveProperty('id'); // Ensure Firestore generated an ID
+      expect(response.body.data.title).toBe(newPost.title);
+    });
 
 });
