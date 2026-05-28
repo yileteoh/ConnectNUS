@@ -25,6 +25,8 @@ describe('Integration Testing', () => {
   });
 
   // Test 3: Creating a new forum post
+  let testForumId;
+
   test('POST /api/forums - should create a new discussion thread', async () => {
       const newPost = {
         title: "Integration Test Post",
@@ -41,6 +43,14 @@ describe('Integration Testing', () => {
       expect(response.body.status).toBe('success');
       expect(response.body.data).toHaveProperty('id'); // Ensure Firestore generated an ID
       expect(response.body.data.title).toBe(newPost.title);
+      testForumId = response.body.data.id; // Store the ID for cleanup
     });
+
+  afterAll(async () => {
+    if (testForumId) {
+      await db.collection('forums').doc(testForumId).delete();
+      console.log(`Cleaned up test forum post: ${testForumId}`);
+    }
+  });
 
 });
