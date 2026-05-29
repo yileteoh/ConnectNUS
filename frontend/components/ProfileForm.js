@@ -24,10 +24,8 @@ import {
   updateUserProfile,
 } from '../services/profileService';
 import {
-  ALL_MODULE_OPTIONS,
   FACULTY_OPTIONS,
   INTEREST_OPTIONS,
-  MODULE_OPTIONS_BY_FACULTY,
   YEAR_OPTIONS,
 } from '../constants/profileOptions';
 
@@ -52,6 +50,8 @@ export default function ProfileForm({
   const [moduleQuery, setModuleQuery] = useState('');
   const [customInterest, setCustomInterest] = useState('');
   const [saving, setSaving] = useState(false);
+  const [allModules, setAllModules] = useState([]);
+  const [isFetchingModules, setIsFetchingModules] = useState(true);
 
   useEffect(() => {
 
@@ -66,24 +66,46 @@ export default function ProfileForm({
     setForm(normalized);
   }, [initialProfile]);
 
+  useEffect(() => {
+    let isActive = true;
+    const fetchNUSModules = async () => {
+      try {
+        const ACAD_YEAR = '2025-2026';
+        const response = await fetch(`https://api.nusmods.com/v2/${ACAD_YEAR}/moduleList.json`);
+        const data = await response.json();
+        if (isActive) {
+          setAllModules(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch NUSMods:', error);
+      } finally {
+        if (isActive) setIsFetchingModules(false);
+      }
+    };
+
+    fetchNUSModules();
+    return () => { isActive = false; };
+  }, []);
+
   const moduleOptions = useMemo(() => {
+
+    if (!Array.isArray(allModules) || allModules.length === 0) {
+      return [];
+    }
+    
     const query = moduleQuery.trim().toUpperCase();
 
-    if (query) {
-      return ALL_MODULE_OPTIONS
-        .filter((moduleCode) => moduleCode.toUpperCase().includes(query))
-        .slice(0, 20); // Show up to 20 matched results globally for smoother performance
+    if (!query) {
+      return allModules.slice(0, 20);
     }
 
-    // show their own faculty's modules as convenient quick-recommendations.
-    if (form.faculty) {
-      const facultyModules = MODULE_OPTIONS_BY_FACULTY[form.faculty] || [];
-      return facultyModules.slice(0, 20);
-    }
-
-    // If no faculty is selected and search is empty, show nothing to keep the view clean
-    return [];
-  }, [form.faculty, moduleQuery]);
+    return allModules
+      .filter((mod) => {
+        const safeCode = mod?.moduleCode || '';
+        return safeCode.toUpperCase().startsWith(query)
+      })
+      .slice(0, 20);
+  }, [moduleQuery, allModules]);
 
   const getPreviewSource = () => {
     if (form.profilePicUrl && form.profilePicUrl.trim() !== '') {
@@ -269,13 +291,15 @@ export default function ProfileForm({
             ) : null}
 
             <View style={styles.optionGrid}>
-              {moduleOptions.map((moduleCode) => {
-                const selected = form.modules.includes(moduleCode);
+              {moduleOptions.map((mod) => {
+                const code = mod.moduleCode; 
+                const selected = form.modules.includes(code);
+                
                 return (
                   <TouchableOpacity
-                    key={moduleCode}
+                    key={code}
                     style={[styles.moduleChip, selected && styles.moduleChipSelected]}
-                    onPress={() => toggleModule(moduleCode)}
+                    onPress={() => toggleModule(code)}
                   >
                     <Text
                       style={[
@@ -283,12 +307,17 @@ export default function ProfileForm({
                         selected && styles.moduleChipTextSelected,
                       ]}
                     >
-                      {moduleCode}
+                      {code}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
+
+            {!isFetchingModules && moduleQuery.trim() !== '' && moduleOptions.length === 0 && (
+              <Text style={styles.helperText}>No modules found matching "{moduleQuery}".</Text>
+            )}
+
             <Text style={styles.helperText}>
               Showing up to 20 results. Search to narrow the list.
             </Text>
