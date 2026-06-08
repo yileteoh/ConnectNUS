@@ -832,9 +832,12 @@ app.put('/api/forums/:postId/comments/:commentId/toggle-like', async (req, res) 
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
-});
+  });
+}
 
 // Export the app instance for testing purposes
 module.exports = app;
+module.exports.db = db;
