@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
   SafeAreaView, Image, TextInput, Platform, StatusBar,
-  ActivityIndicator, RefreshControl
+  ActivityIndicator, RefreshControl, FlatList
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -48,6 +48,7 @@ export default function ForumScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All Topics');
+  const [searchQuery, setSearchQuery] = useState('');
   
   const currentUserId = auth.currentUser?.uid;
 
@@ -106,6 +107,72 @@ export default function ForumScreen() {
     }
   };
 
+  const filteredForums = forums.filter(post => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (post.title && post.title.toLowerCase().includes(query))
+    );
+  });
+
+  const renderPost = ({ item: post }) => {
+    const tagStyle = getTagColor(post.category);
+    const isLiked = post.likes?.includes(currentUserId);
+
+    return (
+      <TouchableOpacity 
+        style={styles.postCard}
+        activeOpacity={0.8}
+        onPress={() => router.push(`/forum-details/${post.id}`)} 
+      >
+        <View style={styles.postHeader}>
+          <View style={[styles.tagBadge, { backgroundColor: tagStyle.bg }]}>
+            <Text style={[styles.tagText, { color: tagStyle.text }]}>{post.category}</Text>
+          </View>
+          <Text style={styles.timeText}>{getRelativeTime(post.createdAt)}</Text>
+        </View>
+        
+        <Text style={styles.postTitle}>{post.title}</Text>
+        <Text style={styles.postSnippet} numberOfLines={3}>
+          {post.content}
+        </Text>
+
+        <View style={styles.postFooter}>
+          <TouchableOpacity 
+            style={styles.authorRow}
+            onPress={() => {
+              if (post.creatorId === currentUserId) router.push('/(tabs)/profile');
+              else router.push(`/user/${post.creatorId}`);
+            }}
+          >
+            {post.creatorPicUrl ? (
+              <Image source={{ uri: post.creatorPicUrl }} style={styles.authorAvatar} />
+            ) : (
+              <Image source={require('../../assets/profile_image.jpg')} style={styles.authorAvatar} />
+            )}
+            <Text style={styles.authorName}>{post.creatorId === currentUserId ? 'You' : post.creatorName}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.statsRow}>
+            <TouchableOpacity 
+              style={styles.statItem} 
+              onPress={() => handleToggleLike(post.id)}
+            >
+              <Ionicons name={isLiked ? "heart" : "heart-outline"} size={20} color={isLiked ? "#E1306C" : "#666"} />
+              <Text style={[styles.statText, isLiked && { color: "#E1306C", fontWeight: 'bold' }]}>
+                {post.likes?.length || 0}
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.statItem}>
+              <Ionicons name="chatbox-outline" size={18} color="#666" />
+              <Text style={styles.statText}>{post.commentCount || 0}</Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header title="Discussions" showSettings={false} />
@@ -116,6 +183,8 @@ export default function ForumScreen() {
           style={styles.searchInput}
           placeholder="Search discussions..."
           placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery} 
         />
       </View>
 
@@ -138,87 +207,32 @@ export default function ForumScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView 
+      <FlatList 
         style={styles.feedContainer} 
         contentContainerStyle={{ paddingBottom: 80 }}
+        data={filteredForums}
+        keyExtractor={(item) => item.id}
+        renderItem={renderPost} 
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#002D5B" />}
-      >
-        {loading && !refreshing ? (
-          <View style={styles.centerLoading}>
-            <ActivityIndicator size="large" color="#002D5B" />
-            <Text style={styles.loadingText}>Loading discussions...</Text>
-          </View>
-        ) : forums.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="chatbubbles-outline" size={60} color="#CCC" />
-            <Text style={styles.emptyStateTitle}>No discussions yet</Text>
-            <Text style={styles.emptyStateSub}>Be the first to start a conversation in '{activeCategory}'!</Text>
-          </View>
-        ) : (
-          forums.map((post) => {
-            const tagStyle = getTagColor(post.category);
-            const isLiked = post.likes?.includes(currentUserId);
-
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={() => {
+          if (loading && !refreshing) {
             return (
-              <TouchableOpacity 
-                key={post.id} 
-                style={styles.postCard}
-                activeOpacity={0.8}
-                onPress={() => router.push(`/forum-details/${post.id}`)} 
-              >
-                <View style={styles.postHeader}>
-                  <View style={[styles.tagBadge, { backgroundColor: tagStyle.bg }]}>
-                    <Text style={[styles.tagText, { color: tagStyle.text }]}>{post.category}</Text>
-                  </View>
-                  <Text style={styles.timeText}>{getRelativeTime(post.createdAt)}</Text>
-                </View>
-                
-                <Text style={styles.postTitle}>{post.title}</Text>
-                <Text style={styles.postSnippet} numberOfLines={3}>
-                  {post.content}
-                </Text>
-
-                <View style={styles.postFooter}>
-                  
-                  {/* Clickable Author Profile Link */}
-                  <TouchableOpacity 
-                    style={styles.authorRow}
-                    onPress={() => {
-                      if (post.creatorId === currentUserId) router.push('/(tabs)/profile');
-                      else router.push(`/user/${post.creatorId}`);
-                    }}
-                  >
-                    {post.creatorPicUrl ? (
-                      <Image source={{ uri: post.creatorPicUrl }} style={styles.authorAvatar} />
-                    ) : (
-                      <Image source={require('../../assets/profile_image.jpg')} style={styles.authorAvatar} />
-                    )}
-                    <Text style={styles.authorName}>{post.creatorId === currentUserId ? 'You' : post.creatorName}</Text>
-                  </TouchableOpacity>
-
-                  {/* Upvote and Comment Stats */}
-                  <View style={styles.statsRow}>
-                    <TouchableOpacity 
-                      style={styles.statItem} 
-                      onPress={() => handleToggleLike(post.id)}
-                    >
-                      <Ionicons name={isLiked ? "heart" : "heart-outline"} size={20} color={isLiked ? "#E1306C" : "#666"} />
-                      <Text style={[styles.statText, isLiked && { color: "#E1306C", fontWeight: 'bold' }]}>
-                        {post.likes?.length || 0}
-                      </Text>
-                    </TouchableOpacity>
-                    
-                    <View style={styles.statItem}>
-                      <Ionicons name="chatbox-outline" size={18} color="#666" />
-                      <Text style={styles.statText}>{post.commentCount || 0}</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
+              <View style={styles.centerLoading}>
+                <ActivityIndicator size="large" color="#002D5B" />
+                <Text style={styles.loadingText}>Loading discussions...</Text>
+              </View>
             );
-          })
-        )}
-      </ScrollView>
+          }
+          return (
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubbles-outline" size={60} color="#CCC" />
+              <Text style={styles.emptyStateTitle}>No discussions yet</Text>
+              <Text style={styles.emptyStateSub}>Be the first to start a conversation in '{activeCategory}'!</Text>
+            </View>
+          );
+        }}
+      />
 
       {/* Floating Action Button for Creating Post */}
       <TouchableOpacity style={styles.fab} onPress={() => router.push('/create-forum')}>

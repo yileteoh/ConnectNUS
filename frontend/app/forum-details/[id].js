@@ -92,14 +92,38 @@ export default function ForumDetailsScreen() {
 
   const handleSendComment = async () => {
     if (!inputText.trim() || !currentUserId) return;
-    setSending(true);
+    const textToSend = inputText.trim();
+    
+    // 1. Instantly clear input and dismiss keyboard for snappy feel
+    setInputText(''); 
     Keyboard.dismiss();
+
+    // 2. Create a temporary "fake" comment to display immediately
+    const tempCommentId = `temp-${Date.now()}`;
+    const optimisticComment = {
+      id: tempCommentId,
+      userId: currentUserId,
+      userName: "Posting...", // Visual feedback that it's sending
+      text: textToSend,
+      createdAt: new Date().toISOString(),
+      likes: []
+    };
+
+    // 3. Force it into the UI list instantly
+    setComments(prev => [...prev, optimisticComment]);
+
     try {
-      await addComment(id, currentUserId, inputText.trim());
-      setInputText('');
-      setComments(await getPostComments(id));
-    } catch (error) { Alert.alert('Error', error.message); } 
-    finally { setSending(false); }
+      // 4. Send to backend in the background
+      await addComment(id, currentUserId, textToSend);
+      
+      // 5. Once successful, silently fetch the real list to get actual IDs
+      const freshComments = await getPostComments(id);
+      setComments(freshComments);
+    } catch (error) { 
+      Alert.alert('Error', error.message);
+      // 6. If network fails, remove the fake comment so the user isn't confused
+      setComments(prev => prev.filter(c => c.id !== tempCommentId));
+    }
   };
 
   const handleCommentDelete = (commentId) => {
