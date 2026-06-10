@@ -151,4 +151,71 @@ app.get('/api/profile/:userId', async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
+
+/**
+   * @route   POST /api/profile/feedback
+   * @desc    Submit system improvement feedback and store in Firestore
+   * @access  Public
+   */
+  app.post('/api/profile/feedback', async (req, res) => {
+    try {
+      const { userId, message } = req.body;
+
+      // Check if message content is empty
+      if (!message || !message.trim()) {
+        return res.status(400).json({ 
+          status: 'error', 
+          message: 'Feedback message cannot be empty.' 
+        });
+      }
+
+      // Create a new record in the 'feedbacks' collection
+      await db.collection('feedbacks').add({
+        userId: userId || 'Anonymous',
+        message: message.trim(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp() // Auto-generated server time
+      });
+
+      return res.status(201).json({ 
+        status: 'success', 
+        message: 'Thank you! Feedback submitted successfully.' 
+      });
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      return res.status(500).json({ 
+        status: 'error', 
+        message: 'Internal server error.' 
+      });
+    }
+  });
+
+  /**
+   * @route   DELETE /api/profile/:userId
+   * @desc    Permanently wipe user data from Firestore and delete Auth credentials
+   * @access  Public
+   */
+  app.delete('/api/profile/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      // 1. Permanently delete the user's profile document from Firestore 'users' collection
+      await db.collection('users').doc(userId).delete();
+
+      // 2. Permanently delete the user's login account from Firebase Authentication using Admin SDK
+      await admin.auth().deleteUser(userId);
+
+      console.log(`Success: Fully wiped data and credentials for user UID: ${userId}`);
+
+      return res.status(200).json({ 
+        status: 'success', 
+        message: 'Account and data have been permanently erased.' 
+      });
+    } catch (error) {
+      console.error('Error during account deletion:', error);
+      return res.status(500).json({ 
+        status: 'error', 
+        message: error.message 
+      });
+    }
+  });
 };

@@ -9,21 +9,24 @@ import {
   TouchableOpacity, 
   Alert,
   Platform,
-  StatusBar
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { auth } from '../firebaseConfig'; 
 import { signOut } from 'firebase/auth';
+import Constants from 'expo-constants';
+
+const BASE_URL = Constants.expoConfig?.extra?.backendUrl || 'http://YOUR_LOCAL_IP:3000';
 
 // Define the menu items for the FlatList
 const settingsData = [
   { id: '1', title: 'Edit Profile', icon: 'person-outline' },
-  { id: '2', title: 'Notifications', icon: 'notifications-outline' },
-  { id: '3', title: 'Privacy & Security', icon: 'lock-closed-outline' },
-  { id: '4', title: 'Help & Support', icon: 'help-circle-outline' },
+  { id: '2', title: 'Send Feedback', icon: 'chatbox-ellipses-outline' },
   // Notice the special color property for the destructive action
-  { id: '5', title: 'Log Out', icon: 'log-out-outline', color: '#FF3B30' }, 
+  { id: '3', title: 'Log Out', icon: 'log-out-outline', color: '#FF3B30' },
+  { id: '4', title: 'Delete Account', icon: 'trash-outline', color: '#FF3B30' },
 ];
 
 export default function SettingsScreen() {
@@ -47,12 +50,50 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account", 
+      "This will permanently delete your profile, posts, and login credentials. This action CANNOT be undone.", 
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete Forever", style: "destructive", onPress: confirmDeletion }
+      ]
+    );
+  };
+
+  const confirmDeletion = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    setProcessing(true);
+    try {
+      // 1. Call Backend API to wipe Firestore data and Firebase Auth credential
+      const response = await fetch(`${BASE_URL}/api/profile/${user.uid}`, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+
+      // 2. Sign out locally and redirect
+      await signOut(auth);
+      router.replace('/login');
+      Alert.alert("Account Deleted", "Your data has been successfully wiped from our servers.");
+    } catch (error) {
+      Alert.alert("Deletion Failed", error.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   // Handle item clicks based on their title or ID
   const handleItemPress = (item) => {
     if (item.title === 'Log Out') {
       handleSignOut();
     } else if (item.title === 'Edit Profile') {
       router.push('/edit-profile');
+    } else if (item.title === 'Delete Account') {
+      handleDeleteAccount();
     } else {
       Alert.alert("Coming Soon", `${item.title} feature will be available later!`);
     }
@@ -67,8 +108,8 @@ export default function SettingsScreen() {
           {item.title}
         </Text>
       </View>
-      {/* Don't show the right arrow for the Log Out button */}
-      {item.title !== 'Log Out' && (
+      {/* Don't show the right arrow for the Log Out and Delete Account button */}
+      {item.title !== 'Log Out' && item.title !== 'Delete Account' && (
         <Ionicons name="chevron-forward" size={20} color="#CCC" />
       )}
     </TouchableOpacity>
