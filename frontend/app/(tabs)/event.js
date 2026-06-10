@@ -12,7 +12,8 @@ import {
   Platform,
   StatusBar,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  FlatList
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../../components/Header';
@@ -40,6 +41,7 @@ export default function EventScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All Events');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const filterTabs = ['All Events', ...EVENT_CATEGORIES];
 
@@ -76,6 +78,83 @@ export default function EventScreen() {
     setLoading(true);
   };
 
+  const filteredEvents = events.filter(event => {
+    const query = searchQuery.toLowerCase();
+    return (event.title && event.title.toLowerCase().includes(query));
+  });
+
+  const renderEvent = ({ item: event }) => {
+    // Calculate capacity progress
+    const currentCount = event.attendees?.length || 0;
+    const maxCount = event.capacity || 1;
+    const isFull = currentCount >= maxCount;
+    const fillPercentage = Math.min((currentCount / maxCount) * 100, 100);
+
+    return (
+      <TouchableOpacity 
+        key={event.id} 
+        style={styles.card}
+        activeOpacity={0.8}
+        onPress={() => router.push(`../event-details/${event.id}`)} 
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle} numberOfLines={2}>{event.title}</Text>
+          <View style={[styles.badge, isFull ? styles.badgeFull : styles.badgeNormal]}>
+            <Text style={styles.badgeText}>{isFull ? 'FULL' : event.category}</Text>
+          </View>
+        </View>
+
+        {event.description ? (
+          <Text style={styles.descriptionText} numberOfLines={2}>{event.description}</Text>
+        ) : null}
+
+        <View style={styles.divider} />
+
+        <View style={styles.infoRow}>
+          <Ionicons name="location-outline" size={16} color="#444" />
+          <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Ionicons name="time-outline" size={16} color="#444" />
+          <Text style={styles.infoText}>{formatEventTime(event.time)}</Text>
+        </View>
+
+        <View style={styles.cardBottomRow}>
+          {/* Avatar Stack Placeholder */}
+          <View style={styles.avatarStack}>
+            {event.creatorPicUrl ? (
+              <Image 
+                source={{ uri: event.creatorPicUrl }} 
+                style={styles.stackedAvatarImage} 
+              />
+            ) : (
+              <Image 
+                source={require('../../assets/profile_image.jpg')}
+                style={styles.stackedAvatarImage} 
+              />
+            )}
+            <Text style={styles.organizerText}>
+              {event.creatorId === currentUserId ? 'You' : (event.creatorName || 'Host')} + {Math.max(0, currentCount - 1)}
+            </Text>
+          </View>
+
+          {/* Progress Bar Info */}
+          <View style={styles.progressContainer}>
+            <Text style={[styles.progressText, isFull && styles.progressTextFull]}>
+              {currentCount}/{maxCount} joined
+            </Text>
+            <View style={styles.progressBarTrack}>
+              <View style={[
+                styles.progressBarFill, 
+                { width: `${fillPercentage}%`, backgroundColor: isFull ? '#D32F2F' : '#002D5B' }
+              ]} />
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header title="Events" showSettings={false} />
@@ -87,6 +166,8 @@ export default function EventScreen() {
           style={styles.searchInput}
           placeholder="Search events..."
           placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
       </View>
 
@@ -111,98 +192,35 @@ export default function EventScreen() {
       </View>
 
       {/* Main Events Feed */}
-      <ScrollView 
+      <FlatList 
         style={styles.feedContainer} 
         contentContainerStyle={{ paddingBottom: 80 }}
+        data={filteredEvents}
+        keyExtractor={(item) => item.id}
+        renderItem={renderEvent} // Connect the render function
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#002D5B" />
         }
-      >
-        {loading && !refreshing ? (
-          <View style={styles.centerLoading}>
-            <ActivityIndicator size="large" color="#002D5B" />
-            <Text style={styles.loadingText}>Loading campus activities...</Text>
-          </View>
-        ) : events.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="calendar-clear-outline" size={60} color="#CCC" />
-            <Text style={styles.emptyStateTitle}>No events found</Text>
-            <Text style={styles.emptyStateSub}>Be the first to host something for '{activeCategory}'!</Text>
-          </View>
-        ) : (
-          events.map((event) => {
-            // Calculate capacity progress
-            const currentCount = event.attendees?.length || 0;
-            const maxCount = event.capacity || 1;
-            const isFull = currentCount >= maxCount;
-            const fillPercentage = Math.min((currentCount / maxCount) * 100, 100);
-
+        // Handle empty states directly within FlatList
+        ListEmptyComponent={() => {
+          if (loading && !refreshing) {
             return (
-              <TouchableOpacity 
-                key={event.id} 
-                style={styles.card}
-                activeOpacity={0.8}
-                onPress={() => router.push(`../event-details/${event.id}`)} 
-              >
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle} numberOfLines={2}>{event.title}</Text>
-                  <View style={[styles.badge, isFull ? styles.badgeFull : styles.badgeNormal]}>
-                    <Text style={styles.badgeText}>{isFull ? 'FULL' : event.category}</Text>
-                  </View>
-                </View>
-
-                {event.description ? (
-                  <Text style={styles.descriptionText} numberOfLines={2}>{event.description}</Text>
-                ) : null}
-
-                <View style={styles.divider} />
-
-                <View style={styles.infoRow}>
-                  <Ionicons name="location-outline" size={16} color="#444" />
-                  <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Ionicons name="time-outline" size={16} color="#444" />
-                  <Text style={styles.infoText}>{formatEventTime(event.time)}</Text>
-                </View>
-
-                <View style={styles.cardBottomRow}>
-                  {/* Avatar Stack Placeholder */}
-                  <View style={styles.avatarStack}>
-                    {event.creatorPicUrl ? (
-                      <Image 
-                        source={{ uri: event.creatorPicUrl }} 
-                        style={styles.stackedAvatarImage} 
-                      />
-                    ) : (
-                      <Image 
-                        source={require('../../assets/profile_image.jpg')}
-                        style={styles.stackedAvatarImage} 
-                      />
-                    )}
-                    <Text style={styles.organizerText}>
-                      {event.creatorId === currentUserId ? 'You' : (event.creatorName || 'Host')} + {Math.max(0, currentCount - 1)}
-                    </Text>
-                  </View>
-
-                  {/* Progress Bar Info */}
-                  <View style={styles.progressContainer}>
-                    <Text style={[styles.progressText, isFull && styles.progressTextFull]}>
-                      {currentCount}/{maxCount} joined
-                    </Text>
-                    <View style={styles.progressBarTrack}>
-                      <View style={[
-                        styles.progressBarFill, 
-                        { width: `${fillPercentage}%`, backgroundColor: isFull ? '#D32F2F' : '#002D5B' }
-                      ]} />
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
+              <View style={styles.centerLoading}>
+                <ActivityIndicator size="large" color="#002D5B" />
+                <Text style={styles.loadingText}>Loading campus activities...</Text>
+              </View>
             );
-          })
-        )}
-      </ScrollView>
+          }
+          return (
+            <View style={styles.emptyState}>
+              <Ionicons name="calendar-clear-outline" size={60} color="#CCC" />
+              <Text style={styles.emptyStateTitle}>No events found</Text>
+              <Text style={styles.emptyStateSub}>Be the first to host something for '{activeCategory}'!</Text>
+            </View>
+          );
+        }}
+      />
 
       {/* Floating Action Button */}
       <TouchableOpacity style={styles.fab} onPress={() => router.push('/create-event')}>
