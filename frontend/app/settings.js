@@ -1,5 +1,5 @@
 // frontend/app/settings.js
-import React from 'react';
+import React, {useState} from 'react';
 import { 
   View, 
   Text, 
@@ -31,6 +31,7 @@ const settingsData = [
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const [processing, setProcessing] = useState(false);
 
   // Sign out function
   const handleSignOut = () => {
@@ -77,7 +78,7 @@ export default function SettingsScreen() {
 
       // 2. Sign out locally and redirect
       await signOut(auth);
-      router.replace('/login');
+      router.replace('/');
       Alert.alert("Account Deleted", "Your data has been successfully wiped from our servers.");
     } catch (error) {
       Alert.alert("Deletion Failed", error.message);
@@ -94,6 +95,8 @@ export default function SettingsScreen() {
       router.push('/edit-profile');
     } else if (item.title === 'Delete Account') {
       handleDeleteAccount();
+    } else if (item.title === 'Send Feedback')  {
+      router.push('/feedback');
     } else {
       Alert.alert("Coming Soon", `${item.title} feature will be available later!`);
     }
