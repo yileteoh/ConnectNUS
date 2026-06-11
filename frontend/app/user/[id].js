@@ -8,19 +8,35 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getUserProfile } from '../../services/profileService';
+import { checkBuddyStatus, sendBuddyRequest, acceptBuddyRequest, removeBuddy } from '../../services/buddyService';
+import { auth } from '../../firebaseConfig';
 
 export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams(); 
   const router = useRouter();
+  const currentUserId = auth.currentUser?.uid;
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Buddy States
+  const [relationStatus, setRelationStatus] = useState('none');
+  const [requestId, setRequestId] = useState(null); 
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     const loadPeerProfile = async () => {
       try {
         const data = await getUserProfile(id); 
         setProfile(data);
+
+        // Fetch the relationship status between current user and this profile
+        if (currentUserId && currentUserId !== id) {
+          const statusData = await checkBuddyStatus(currentUserId, id);
+          setRelationStatus(statusData.relation);
+          if (statusData.requestId) setRequestId(statusData.requestId);
+        }
+
       } catch (error) {
         Alert.alert('Profile Error', 'Could not index profile details for this peer.');
         router.back();
@@ -30,7 +46,86 @@ export default function PublicProfileScreen() {
     };
 
     loadPeerProfile();
-  }, [id, router]);
+  }, [id, currentUserId, router]);
+
+// Send Request
+  const handleSendRequest = async () => {
+    setProcessing(true);
+    try {
+      await sendBuddyRequest(currentUserId, id);
+      setRelationStatus('pending_sent');
+      Alert.alert('Sent!', 'Buddy request has been sent.');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Cannot send request.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Accept Request
+  const handleAcceptRequest = async () => {
+    setProcessing(true);
+    try {
+      await acceptBuddyRequest(requestId, id, currentUserId);
+      setRelationStatus('buddies');
+      Alert.alert('Matched!', `You and ${profile?.name} are now buddies!`);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Remove Buddy
+  const handleRemoveBuddy = () => {
+    Alert.alert('Remove Buddy', 'Are you sure you want to dissolve this 1-on-1 partnership?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: async () => {
+          setProcessing(true);
+          try {
+            await removeBuddy(currentUserId, id);
+            setRelationStatus('none');
+            Alert.alert('Removed', 'Partnership dissolved.');
+          } catch (error) {
+            Alert.alert('Error', error.message);
+          } finally {
+            setProcessing(false);
+          }
+      }}
+    ]);
+  };
+
+  // Render Action Button
+  const renderBuddyAction = () => {
+    if (currentUserId === id) return null;
+
+    switch (relationStatus) {
+      case 'buddies':
+        return (
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#D32F2F' }]} onPress={handleRemoveBuddy} disabled={processing}>
+             {processing ? <ActivityIndicator color="#FFF"/> : <Text style={styles.actionBtnText}>Remove Buddy</Text>}
+          </TouchableOpacity>
+        );
+      case 'pending_sent':
+        return (
+          <View style={[styles.actionBtn, { backgroundColor: '#E0E0E0' }]}>
+            <Text style={[styles.actionBtnText, { color: '#666' }]}>Request Pending...</Text>
+          </View>
+        );
+      case 'pending_received':
+        return (
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#28A745' }]} onPress={handleAcceptRequest} disabled={processing}>
+            {processing ? <ActivityIndicator color="#FFF"/> : <Text style={styles.actionBtnText}>Accept Buddy Request</Text>}
+          </TouchableOpacity>
+        );
+      default: // 'none'
+        return (
+          <TouchableOpacity style={styles.actionBtn} onPress={handleSendRequest} disabled={processing}>
+            {processing ? <ActivityIndicator color="#FFF"/> : <Text style={styles.actionBtnText}>Send Buddy Request</Text>}
+          </TouchableOpacity>
+        );
+    }
+  };
 
 const handleOpenLink = async (rawUrl) => {
     let url = rawUrl.trim();
@@ -184,10 +279,9 @@ const handleOpenLink = async (rawUrl) => {
           </View>
         ) : null}
 
-        <TouchableOpacity style={styles.actionConnectBtn}>
-          <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
-          <Text style={styles.actionConnectBtnText}>Send Buddy Request</Text>
-        </TouchableOpacity>
+        <View style={{ paddingVertical: 20 }}>
+          {renderBuddyAction()}
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -229,5 +323,8 @@ const styles = StyleSheet.create({
   socialLinkButtonText: { fontSize: 13, fontWeight: '600', marginLeft: 6 },
   
   actionConnectBtn: { backgroundColor: '#F28C28', flexDirection: 'row', paddingVertical: 14, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
-  actionConnectBtnText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' }
+  actionConnectBtnText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
+
+  actionBtn: { backgroundColor: '#F28C28', flexDirection: 'row', paddingVertical: 14, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  actionBtnText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' }
 });
