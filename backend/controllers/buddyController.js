@@ -1,6 +1,6 @@
 const { admin, db } = require('../config/firebase');
 
-// Get Personalized Recommendations (Prioritize same faculty)
+// Get Personalized Recommendations
 const getRecommendations = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -11,26 +11,45 @@ const getRecommendations = async (req, res) => {
     
     const myFaculty = userDoc.data().faculty || '';
     const myBuddy = userDoc.data().currentBuddyId || null;
+    const myYear = userDoc.data().year || '';
+    const myModules = userDoc.data().modules || [];
+    const myInterests = userDoc.data().interests || [];
 
     // Fetch all students
     const snapshot = await db.collection('users').get();
     let recommendations = [];
 
     snapshot.forEach(doc => {
-      const userData = doc.data();
+      const peerData = doc.data();
       // Exclude self, exclude people who already have a buddy, and exclude my current buddy
-      if (doc.id !== userId && !userData.currentBuddyId) {
+      if (doc.id !== userId && doc.id !== myBuddy && !peerData.currentBuddyId && peerData.buddyStatus !== false) {
+        
+        let score = 0;
+        let commonTags = [];
+
+        if (peerData.faculty === myFaculty) score += 2;
+        
+        if (peerData.year !== myYear) score += 1;
+
+        const sharedModules = (peerData.modules || []).filter(m => myModules.includes(m));
+        score += (sharedModules.length * 3);
+        commonTags.push(...sharedModules);
+
+        const sharedInterests = (peerData.interests || []).filter(i => myInterests.includes(i));
+        score += (sharedInterests.length * 2);
+        commonTags.push(...sharedInterests);
+
         recommendations.push({
           id: doc.id,
-          ...userData,
-          // Calculate a matching score: same faculty = higher score
-          matchScore: userData.faculty === myFaculty ? 1 : 0
+          ...peerData,
+          matchScore: score,
+          commonTags: commonTags
         });
       }
     });
 
-    // Sort by match score descending (Same faculty comes first)
-    recommendations.sort((a, b) => b.matchScore - a.matchScore);
+    // Sort by match score descending
+    recommendations.sort((a, b) => b.matchScore - a.matchScore || Math.random() - 0.5);
 
     return res.status(200).json({ status: 'success', data: recommendations });
   } catch (error) {

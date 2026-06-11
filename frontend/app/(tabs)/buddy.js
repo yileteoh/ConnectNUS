@@ -2,13 +2,25 @@
 import React, { useState, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  SafeAreaView, Image, Platform, StatusBar, ActivityIndicator, RefreshControl
+  SafeAreaView, Image, Platform, StatusBar, ActivityIndicator, RefreshControl, ScrollView, TextInput, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { getBuddyRecommendations } from '../../services/buddyService';
+
+const FACULTY_OPTIONS = [
+  'All',
+  'College of Design and Engineering',
+  'Faculty of Arts & Social Sciences',
+  'Faculty of Law',
+  'Faculty of Science',
+  'School of Computing',
+  'NUS Business School',
+  'Yong Loo Lin School of Medicine',
+  'Other Schools & Programmes',
+];
 
 export default function BuddyScreen() {
   const router = useRouter();
@@ -17,6 +29,9 @@ export default function BuddyScreen() {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFaculty, setActiveFaculty] = useState('All');
 
   // Fetch recommendations from backend
   const loadRecommendations = async () => {
@@ -44,10 +59,22 @@ export default function BuddyScreen() {
     loadRecommendations();
   }, [currentUserId]);
 
+  const filteredBuddies = recommendations.filter(buddy => {
+    // Search match (checks name, bio, or interests)
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = 
+      (buddy.name && buddy.name.toLowerCase().includes(query)) ||
+      (buddy.interests && buddy.interests.some(i => i.toLowerCase().includes(query)));
+      
+    // Faculty match
+    const matchesFaculty = activeFaculty === 'All' || buddy.faculty === activeFaculty;
+
+    return matchesSearch && matchesFaculty;
+  });
+
   // Render individual buddy recommendation card
   const renderBuddyCard = ({ item }) => {
-    // Backend assigns matchScore = 1 if same faculty
-    const isSameFaculty = item.matchScore === 1;
+    const isTopMatch = item.matchScore >= 5;
 
     return (
       <TouchableOpacity 
@@ -64,11 +91,11 @@ export default function BuddyScreen() {
           
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{item.name}</Text>
-            <Text style={styles.userDetail}>Year {item.year} • {item.faculty}</Text>
+            <Text style={styles.userDetail}>{item.year} • {item.faculty}</Text>
           </View>
 
           {/* Personalized 'Match' Badge */}
-          {isSameFaculty && (
+          {isTopMatch && (
             <View style={styles.matchBadge}>
               <Ionicons name="sparkles" size={12} color="#FFF" />
               <Text style={styles.matchText}>Top Match</Text>
@@ -101,13 +128,41 @@ export default function BuddyScreen() {
     <SafeAreaView style={styles.safeArea}>
       <Header title="Find a Buddy" showSettings={false} />
 
-      <View style={styles.headerContext}>
-        <Text style={styles.headerContextTitle}>Recommended for You</Text>
-        <Text style={styles.headerContextSub}>Based on your faculty and interests</Text>
+     {/* 1. Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
+        <TextInput 
+          style={styles.searchInput}
+          placeholder="Search by name, interests..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* 2. Faculty Filter Chips */}
+      <View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={{ paddingHorizontal: 15 }}>
+          {FACULTY_OPTIONS.map((faculty) => {
+            const isActive = activeFaculty === faculty;
+            
+            return (
+              <TouchableOpacity 
+                key={faculty}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                onPress={() => setActiveFaculty(faculty)}
+              >
+                <Text style={isActive ? styles.filterChipTextActive : styles.filterChipText}>
+                  {faculty}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <FlatList
-        data={recommendations}
+        data={filteredBuddies}
         keyExtractor={(item) => item.id}
         renderItem={renderBuddyCard}
         contentContainerStyle={styles.listContent}
@@ -144,6 +199,15 @@ const styles = StyleSheet.create({
   headerContextTitle: { fontSize: 20, fontWeight: 'bold', color: '#002D5B' },
   headerContextSub: { fontSize: 14, color: '#666', marginTop: 4 },
   listContent: { paddingHorizontal: 16, paddingBottom: 80 },
+
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EAEAEA', borderRadius: 10, paddingHorizontal: 12, height: 45, marginHorizontal: 15, marginTop: 10, marginBottom: 15 },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 15, color: '#333' },
+  filterScroll: { marginBottom: 15, maxHeight: 40 },
+  filterChip: { backgroundColor: '#E6E8EA', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 10, justifyContent: 'center', alignItems: 'center', height: 35 },
+  filterChipActive: { backgroundColor: '#002D5B' },
+  filterChipText: { color: '#555', fontSize: 13, fontWeight: '600' },
+  filterChipTextActive: { color: '#FFF', fontSize: 13, fontWeight: '700' },
   
   buddyCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#EAEAEA', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
@@ -163,5 +227,9 @@ const styles = StyleSheet.create({
   moreTags: { fontSize: 12, color: '#888', marginBottom: 8 },
   
   connectButton: { backgroundColor: '#F8F9FA', borderRadius: 8, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: '#EAEAEA' },
-  connectButtonText: { color: '#002D5B', fontWeight: '600', fontSize: 14 }
+  connectButtonText: { color: '#002D5B', fontWeight: '600', fontSize: 14 },
+
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 },
+  emptyStateTitle: { fontSize: 18, fontWeight: 'bold', color: '#002D5B', marginTop: 12 },
+  emptyStateSub: { fontSize: 14, color: '#666', marginTop: 6, textAlign: 'center', paddingHorizontal: 20 },
 });
