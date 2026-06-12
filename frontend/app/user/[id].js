@@ -52,7 +52,10 @@ export default function PublicProfileScreen() {
   const handleSendRequest = async () => {
     setProcessing(true);
     try {
-      await sendBuddyRequest(currentUserId, id);
+      const result = await sendBuddyRequest(currentUserId, id);
+      if (result.requestId) {
+        setRequestId(result.requestId); 
+      }
       setRelationStatus('pending_sent');
       Alert.alert('Success!', 'Buddy request has been sent.');
     } catch (error) {

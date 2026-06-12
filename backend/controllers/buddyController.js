@@ -70,14 +70,12 @@ const sendBuddyRequest = async (req, res) => {
     if (receiverDoc.data().currentBuddyId) return res.status(400).json({ error: 'This person already has a buddy.' });
 
     // Create pending request
-    await db.collection('buddyRequests').add({
-      senderId,
-      receiverId,
-      status: 'pending',
+    const newRequest = await db.collection('buddyRequests').add({
+      senderId, receiverId, status: 'pending',
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    return res.status(201).json({ status: 'success', message: 'Request sent!' });
+    return res.status(201).json({ status: 'success', message: 'Request sent!', requestId: newRequest.id });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
   }
