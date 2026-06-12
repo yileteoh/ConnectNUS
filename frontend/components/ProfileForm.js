@@ -45,6 +45,7 @@ export default function ProfileForm({
   onSaved,
   onCancel,
   allowCancel = true,
+  hasBuddy = false,
 }) {
   const [form, setForm] = useState(emptyProfile);
   const [moduleQuery, setModuleQuery] = useState('');
@@ -437,8 +438,16 @@ export default function ProfileForm({
                 onValueChange={(value) => updateField('buddyStatus', value)}
                 trackColor={{ false: '#D1D5DB', true: '#A8C5E6' }}
                 thumbColor={form.buddyStatus ? '#002D5B' : '#F4F4F5'}
+                disabled={hasBuddy}
               />
             </View>
+
+            {hasBuddy && (
+              <Text style={{ color: '#D32F2F', fontSize: 12, marginTop: 8 }}>
+                You are currently paired. Dissolve your partnership first to change this setting.
+              </Text>
+            )}
+            
           </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>

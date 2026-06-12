@@ -168,7 +168,10 @@ const checkBuddyStatus = async (req, res) => {
       .where('receiverId', '==', targetUserId)
       .where('status', '==', 'pending').get();
       
-    if (!sentQuery.empty) return res.status(200).json({ status: 'success', data: { relation: 'pending_sent' } });
+    if (!sentQuery.empty) {
+      const requestId = sentQuery.docs[0].id;
+      return res.status(200).json({ status: 'success', data: { relation: 'pending_sent', requestId } });
+    }
 
     const receivedQuery = await db.collection('buddyRequests')
       .where('senderId', '==', targetUserId)

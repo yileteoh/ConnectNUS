@@ -93,6 +93,18 @@ export default function PublicProfileScreen() {
     ]);
   };
 
+  const handleCancelRequest = async () => {
+    setProcessing(true);
+    try {
+      await declineBuddyRequest(requestId);
+      setRelationStatus('none');
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   // Remove Buddy
   const handleRemoveBuddy = () => {
     Alert.alert('Remove Buddy', 'Are you sure you want to dissolve this 1-on-1 partnership?', [
@@ -132,9 +144,9 @@ export default function PublicProfileScreen() {
         );
       case 'pending_sent':
         return (
-          <View style={[styles.actionBtn, { backgroundColor: '#E0E0E0' }]}>
-            <Text style={[styles.actionBtnText, { color: '#666' }]}>Request Pending...</Text>
-          </View>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FFB74D' }]} onPress={handleCancelRequest} disabled={processing}>
+            {processing ? <ActivityIndicator color="#FFF"/> : <Text style={styles.actionBtnText}>Cancel Request</Text>}
+          </TouchableOpacity>
         );
       case 'pending_received':
         return (

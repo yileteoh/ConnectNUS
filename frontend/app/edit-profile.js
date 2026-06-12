@@ -43,6 +43,7 @@ export default function EditProfileScreen() {
       title="Edit Profile"
       subtitle="Keep your modules, interests, and buddy status up to date."
       submitLabel="Save Changes"
+      hasBuddy={!!profile?.currentBuddyId}
       onCancel={() => router.back()}
       onSaved={() => router.replace('/(tabs)/profile')}
     />

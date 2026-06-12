@@ -44,13 +44,6 @@ export default function BuddyScreen() {
       // Fetch user's own profile to check operational status
       const myProfile = await getUserProfile(currentUserId);
       
-      // If user toggled off buddy matching in settings
-      if (myProfile.buddyStatus === false) {
-        setOptedOut(true);
-        return;
-      }
-      setOptedOut(false);
-
       // Check if user is already locked into an exclusive 1-on-1 partnership
       if (myProfile.currentBuddyId) {
         const buddyData = await getMyBuddyProfile(currentUserId);
@@ -58,6 +51,13 @@ export default function BuddyScreen() {
         return;
       }
       setExclusiveBuddy(null);
+      
+      // If user toggled off buddy matching in settings
+      if (myProfile.buddyStatus === false) {
+        setOptedOut(true);
+        return;
+      }
+      setOptedOut(false);
 
       // If open and single, fetch Inbox Requests + Recommendations in parallel
       const [inboxData, recData] = await Promise.all([
@@ -100,20 +100,7 @@ export default function BuddyScreen() {
 
     return matchesSearch && matchesFaculty;
   });
-
-if (optedOut && !loading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <Header title="Find a Buddy" showSettings={false} />
-        <View style={styles.emptyState}>
-          <Ionicons name="lock-closed-outline" size={60} color="#CCC" />
-          <Text style={styles.emptyStateTitle}>Matching Disabled</Text>
-          <Text style={styles.emptyStateSub}>You have turned off Buddy Matching. Go to Edit Profile to enable it and discover new peers.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
+  
   // Rendered if user already has an active 1-on-1 Buddy
   if (exclusiveBuddy && !loading) {
     return (
@@ -153,6 +140,19 @@ if (optedOut && !loading) {
             </TouchableOpacity>
           </View>
         </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+if (optedOut && !loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Header title="Find a Buddy" showSettings={false} />
+        <View style={styles.emptyState}>
+          <Ionicons name="lock-closed-outline" size={60} color="#CCC" />
+          <Text style={styles.emptyStateTitle}>Matching Disabled</Text>
+          <Text style={styles.emptyStateSub}>You have turned off Buddy Matching. Go to Edit Profile to enable it and discover new peers.</Text>
+        </View>
       </SafeAreaView>
     );
   }
