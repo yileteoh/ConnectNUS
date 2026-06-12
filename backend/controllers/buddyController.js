@@ -202,6 +202,10 @@ const getPendingRequests = async (req, res) => {
       const senderDoc = await db.collection('users').doc(reqData.senderId).get();
       if (senderDoc.exists) {
         const senderData = senderDoc.data();
+        if (senderData.currentBuddyId) {
+          await db.collection('buddyRequests').doc(doc.id).delete();
+          continue;
+        }
         requests.push({
           id: doc.id,
           senderId: reqData.senderId,
