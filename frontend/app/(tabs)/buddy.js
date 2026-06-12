@@ -181,11 +181,6 @@ if (optedOut && !loading) {
       )}
 
       {/* Discovery Filters */}
-      <View style={styles.headerContext}>
-        <Text style={styles.headerContextTitle}>Recommended for You</Text>
-        <Text style={styles.headerContextSub}>Based on shared modules and interests</Text>
-      </View>
-
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
         <TextInput 
@@ -209,6 +204,11 @@ if (optedOut && !loading) {
           );
         })}
       </ScrollView>
+
+      <View style={styles.headerContext}>
+        <Text style={styles.headerContextTitle}>Recommended for You</Text>
+        <Text style={styles.headerContextSub}>Based on shared modules and interests</Text>
+      </View>
     </View>
   );
 
