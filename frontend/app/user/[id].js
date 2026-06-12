@@ -48,7 +48,7 @@ export default function PublicProfileScreen() {
     loadPeerProfile();
   }, [id, currentUserId, router]);
 
-// Send Request
+  // Send Request
   const handleSendRequest = async () => {
     setProcessing(true);
     try {
@@ -163,7 +163,16 @@ export default function PublicProfileScreen() {
             </TouchableOpacity>
           </View>
         );
-      default: // 'none'
+      default:
+        if (profile?.buddyStatus === false) {
+          return (
+            <View style={[styles.actionBtn, { backgroundColor: '#E0E0E0' }]}>
+              <Ionicons name="lock-closed" size={18} color="#888" style={{ marginRight: 6 }} />
+              <Text style={[styles.actionBtnText, { color: '#888' }]}>Matching Disabled</Text>
+            </View>
+          );
+        }
+
         return (
           <TouchableOpacity style={styles.actionBtn} onPress={handleSendRequest} disabled={processing}>
             {processing ? <ActivityIndicator color="#FFF"/> : <Text style={styles.actionBtnText}>Send Buddy Request</Text>}

@@ -100,7 +100,7 @@ export default function BuddyScreen() {
 
     return matchesSearch && matchesFaculty;
   });
-  
+
   // Rendered if user already has an active 1-on-1 Buddy
   if (exclusiveBuddy && !loading) {
     return (
@@ -212,7 +212,7 @@ if (optedOut && !loading) {
 
   // Recommendation List rendering function
   const renderBuddyCard = ({ item }) => {
-    const isTopMatch = item.matchScore >= 5;
+    const isTopMatch = item.matchScore >= 10;
     return (
       <TouchableOpacity style={styles.buddyCard} activeOpacity={0.8} onPress={() => router.push(`/user/${item.id}`)}>
         <View style={styles.cardHeader}>

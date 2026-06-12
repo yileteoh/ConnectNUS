@@ -27,12 +27,12 @@ const getRecommendations = async (req, res) => {
         let score = 0;
         let commonTags = [];
 
-        if (peerData.faculty === myFaculty) score += 2;
+        if (peerData.faculty === myFaculty) score += 3;
         
-        if (peerData.year !== myYear) score += 1;
+        if (peerData.year !== myYear) score += 3;
 
         const sharedModules = (peerData.modules || []).filter(m => myModules.includes(m));
-        score += (sharedModules.length * 3);
+        score += (sharedModules.length * 2);
         commonTags.push(...sharedModules);
 
         const sharedInterests = (peerData.interests || []).filter(i => myInterests.includes(i));
@@ -68,6 +68,10 @@ const sendBuddyRequest = async (req, res) => {
 
     if (senderDoc.data().currentBuddyId) return res.status(400).json({ error: 'You already have a buddy.' });
     if (receiverDoc.data().currentBuddyId) return res.status(400).json({ error: 'This person already has a buddy.' });
+
+    if (receiverDoc.data().buddyStatus === false) {
+      return res.status(403).json({ error: 'This user is currently not accepting buddy requests.' });
+    }
 
     // Create pending request
     const newRequest = await db.collection('buddyRequests').add({
