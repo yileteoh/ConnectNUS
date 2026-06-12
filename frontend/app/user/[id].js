@@ -8,7 +8,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getUserProfile } from '../../services/profileService';
-import { checkBuddyStatus, sendBuddyRequest, acceptBuddyRequest, removeBuddy } from '../../services/buddyService';
+import { checkBuddyStatus, sendBuddyRequest, acceptBuddyRequest, removeBuddy, declineBuddyRequest } from '../../services/buddyService';
 import { auth } from '../../firebaseConfig';
 
 export default function PublicProfileScreen() {
@@ -54,7 +54,7 @@ export default function PublicProfileScreen() {
     try {
       await sendBuddyRequest(currentUserId, id);
       setRelationStatus('pending_sent');
-      Alert.alert('Sent!', 'Buddy request has been sent.');
+      Alert.alert('Success!', 'Buddy request has been sent.');
     } catch (error) {
       Alert.alert('Error', error.message || 'Cannot send request.');
     } finally {
@@ -74,6 +74,23 @@ export default function PublicProfileScreen() {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleDeclineRequest = async () => {
+    Alert.alert('Decline Request', 'Are you sure you want to decline this buddy request?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Decline', style: 'destructive', onPress: async () => {
+          setProcessing(true);
+          try {
+            await declineBuddyRequest(requestId);
+            setRelationStatus('none');
+          } catch (error) {
+            Alert.alert('Error', error.message);
+          } finally {
+            setProcessing(false);
+          }
+      }}
+    ]);
   };
 
   // Remove Buddy
@@ -106,6 +123,13 @@ export default function PublicProfileScreen() {
              {processing ? <ActivityIndicator color="#FFF"/> : <Text style={styles.actionBtnText}>Remove Buddy</Text>}
           </TouchableOpacity>
         );
+      case 'has_buddy':
+        return (
+          <View style={[styles.actionBtn, { backgroundColor: '#E0E0E0' }]}>
+            <Ionicons name="lock-closed" size={18} color="#888" style={{ marginRight: 6 }} />
+            <Text style={[styles.actionBtnText, { color: '#888' }]}>Already Paired</Text>
+          </View>
+        );
       case 'pending_sent':
         return (
           <View style={[styles.actionBtn, { backgroundColor: '#E0E0E0' }]}>
@@ -114,9 +138,15 @@ export default function PublicProfileScreen() {
         );
       case 'pending_received':
         return (
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#28A745' }]} onPress={handleAcceptRequest} disabled={processing}>
-            {processing ? <ActivityIndicator color="#FFF"/> : <Text style={styles.actionBtnText}>Accept Buddy Request</Text>}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginHorizontal: 20, marginTop: 10 }}>
+            <TouchableOpacity style={[styles.actionBtn, { flex: 1, marginRight: 10, backgroundColor: '#E0E0E0', marginTop: 0 }]} onPress={handleDeclineRequest} disabled={processing}>
+              <Text style={[styles.actionBtnText, { color: '#333' }]}>Decline</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.actionBtn, { flex: 1, backgroundColor: '#28A745', marginTop: 0 }]} onPress={handleAcceptRequest} disabled={processing}>
+              {processing ? <ActivityIndicator color="#FFF"/> : <Text style={styles.actionBtnText}>Accept</Text>}
+            </TouchableOpacity>
+          </View>
         );
       default: // 'none'
         return (

@@ -98,3 +98,16 @@ export const getMyBuddyProfile = async (userId) => {
     throw error;
   }
 };
+
+export const declineBuddyRequest = async (requestId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/buddy/request/${requestId}`, {
+      method: 'DELETE'
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};

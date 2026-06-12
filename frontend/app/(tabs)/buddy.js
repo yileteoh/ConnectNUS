@@ -195,11 +195,9 @@ if (optedOut && !loading) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={{ paddingHorizontal: 15 }}>
         {FACULTY_OPTIONS.map((faculty) => {
           const isActive = activeFaculty === faculty;
-          // Clean up long faculty strings for UI presentation
-          const label = faculty.replace('Faculty of ', '').replace('School of ', '').replace('College of ', '');
           return (
             <TouchableOpacity key={faculty} style={[styles.filterChip, isActive && styles.filterChipActive]} onPress={() => setActiveFaculty(faculty)}>
-              <Text style={isActive ? styles.filterChipTextActive : styles.filterChipText}>{label}</Text>
+              <Text style={isActive ? styles.filterChipTextActive : styles.filterChipText}>{faculty}</Text>
             </TouchableOpacity>
           );
         })}
@@ -225,7 +223,7 @@ if (optedOut && !loading) {
           )}
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{item.name}</Text>
-            <Text style={styles.userDetail}>Year {item.year} • {item.faculty}</Text>
+            <Text style={styles.userDetail}>{item.year} • {item.faculty}</Text>
           </View>
           {isTopMatch && (
             <View style={styles.matchBadge}>

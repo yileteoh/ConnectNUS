@@ -109,6 +109,21 @@ const acceptBuddyRequest = async (req, res) => {
       transaction.update(requestRef, { status: 'accepted' });
     });
 
+    const cleanupRequests = async (uid) => {
+      const batch = db.batch();
+      let count = 0;
+      
+      const sent = await db.collection('buddyRequests').where('senderId', '==', uid).where('status', '==', 'pending').get();
+      sent.forEach(doc => { batch.delete(doc.ref); count++; });
+      
+      const received = await db.collection('buddyRequests').where('receiverId', '==', uid).where('status', '==', 'pending').get();
+      received.forEach(doc => { batch.delete(doc.ref); count++; });
+      
+      if (count > 0) await batch.commit();
+    };
+
+    await Promise.all([cleanupRequests(senderId), cleanupRequests(receiverId)]);
+
     return res.status(200).json({ status: 'success', message: 'Buddy accepted! You are now locked 1-on-1.' });
   } catch (error) {
     return res.status(400).json({ status: 'error', message: error.message });
@@ -136,6 +151,11 @@ const checkBuddyStatus = async (req, res) => {
     const { currentUserId, targetUserId } = req.query;
 
     const userDoc = await db.collection('users').doc(currentUserId).get();
+    const targetDoc = await db.collection('users').doc(targetUserId).get();
+
+    if (targetDoc.exists && targetDoc.data().currentBuddyId && targetDoc.data().currentBuddyId !== currentUserId) {
+      return res.status(200).json({ status: 'success', data: { relation: 'has_buddy' } });
+    }
     
     // Check if they are already buddies
     if (userDoc.data().currentBuddyId === targetUserId) {
@@ -231,4 +251,15 @@ const getMyBuddyProfile = async (req, res) => {
   }
 };
 
-module.exports = { getRecommendations, sendBuddyRequest, acceptBuddyRequest, removeBuddy, checkBuddyStatus, getPendingRequests, getMyBuddyProfile };
+// Decline a buddy request (Delete the pending request)
+const declineBuddyRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    await db.collection('buddyRequests').doc(requestId).delete();
+    return res.status(200).json({ status: 'success', message: 'Request declined and removed.' });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+module.exports = { getRecommendations, sendBuddyRequest, acceptBuddyRequest, removeBuddy, checkBuddyStatus, getPendingRequests, getMyBuddyProfile, declineBuddyRequest };
