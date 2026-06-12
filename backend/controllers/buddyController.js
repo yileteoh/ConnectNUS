@@ -166,4 +166,69 @@ const checkBuddyStatus = async (req, res) => {
   }
 };
 
-module.exports = { getRecommendations, sendBuddyRequest, acceptBuddyRequest, removeBuddy, checkBuddyStatus };
+// Get all pending incoming buddy requests for a user
+const getPendingRequests = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const snapshot = await db.collection('buddyRequests')
+      .where('receiverId', '==', userId)
+      .where('status', '==', 'pending')
+      .get();
+
+    let requests = [];
+    for (let doc of snapshot.docs) {
+      const reqData = doc.data();
+      // Fetch sender's basic info to display in the inbox UI
+      const senderDoc = await db.collection('users').doc(reqData.senderId).get();
+      if (senderDoc.exists) {
+        const senderData = senderDoc.data();
+        requests.push({
+          id: doc.id,
+          senderId: reqData.senderId,
+          senderName: senderData.name || 'NUS Student',
+          senderPicUrl: senderData.profilePicUrl || '',
+          senderFaculty: senderData.faculty || '',
+          createdAt: reqData.createdAt
+        });
+      }
+    }
+    
+    // Sort so newest requests appear first
+    requests.sort((a, b) => {
+      const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+      const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+      return timeB - timeA;
+    });
+
+    return res.status(200).json({ status: 'success', data: requests });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Get the profile of the current exclusive buddy
+const getMyBuddyProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Check if the user has a buddy ID linked
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) return res.status(404).json({ error: 'User not found' });
+
+    const buddyId = userDoc.data().currentBuddyId;
+    if (!buddyId) return res.status(200).json({ status: 'success', data: null });
+
+    // Fetch and return the buddy's full profile
+    const buddyDoc = await db.collection('users').doc(buddyId).get();
+    if (!buddyDoc.exists) return res.status(200).json({ status: 'success', data: null });
+
+    return res.status(200).json({ 
+      status: 'success', 
+      data: { id: buddyDoc.id, ...buddyDoc.data() } 
+    });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+module.exports = { getRecommendations, sendBuddyRequest, acceptBuddyRequest, removeBuddy, checkBuddyStatus, getPendingRequests, getMyBuddyProfile };

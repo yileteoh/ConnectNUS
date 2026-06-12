@@ -74,3 +74,27 @@ export const removeBuddy = async (userId, buddyId) => {
     throw error;
   }
 };
+
+// Fetch pending incoming requests
+export const getPendingRequests = async (userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/buddy/requests/${userId}`);
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result.data || [];
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Fetch current exclusive buddy profile
+export const getMyBuddyProfile = async (userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/buddy/mybuddy/${userId}`);
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return result.data; // Returns null if no buddy
+  } catch (error) {
+    throw error;
+  }
+};
