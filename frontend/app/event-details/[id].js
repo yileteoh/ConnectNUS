@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
 import { getEventDetails, joinEvent, leaveEvent, deleteEvent } from '../../services/eventService';
+import * as Calendar from 'expo-calendar';
 
 const formatEventTime = (isoString) => {
   if (!isoString) return 'Time TBD';
@@ -123,6 +124,44 @@ export default function EventDetailsScreen() {
     );
   };
 
+  // Export Event to Device Calendar
+  const handleExportCalendar = async () => {
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need calendar permissions to save this event.');
+        return;
+      }
+
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const defaultCalendar = Platform.OS === 'ios'
+        ? calendars.find(cal => cal.isPrimary) || calendars[0]
+        : calendars.find(cal => cal.accessLevel === Calendar.CalendarAccessLevel.OWNER) || calendars[0];
+
+      if (!defaultCalendar) {
+        Alert.alert('Error', 'No accessible calendar found on this device.');
+        return;
+      }
+
+      const startDate = new Date(event.time);
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+      await Calendar.createEventAsync(defaultCalendar.id, {
+        title: `[ConnectNUS] ${event.title}`,
+        startDate: startDate,
+        endDate: endDate,
+        location: event.location,
+        notes: event.description || 'Event via ConnectNUS',
+        alarms: [{ relativeOffset: -60 }]
+      });
+
+      Alert.alert('Success!', 'Event has been added to your device calendar.');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Export Failed', 'Could not save event to calendar.');
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -177,6 +216,17 @@ export default function EventDetailsScreen() {
             <Ionicons name="location-outline" size={20} color="#002D5B" />
             <Text style={styles.infoText}>{event.location}</Text>
           </View>
+
+          <View style={styles.divider} />
+          <TouchableOpacity 
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 5 }}
+            onPress={handleExportCalendar}
+          >
+            <Ionicons name="calendar-outline" size={18} color="#F28C28" />
+            <Text style={{ fontSize: 15, color: '#F28C28', marginLeft: 8, fontWeight: '600' }}>
+              Add to Device Calendar
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.sectionTitle}>About this event</Text>
