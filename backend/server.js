@@ -1,6 +1,9 @@
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
+const { Server } = require('socket.io');
 const routes = require('./routes');
+const { saveMessage } = require('./controllers/chatController');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,10 +11,28 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-app.use('/api', routes); 
+app.use('/api', routes);
+
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+
+io.on('connection', (socket) => {
+  socket.on('join_room', ({ conversationId }) => {
+    socket.join(conversationId);
+  });
+
+  socket.on('send_message', async ({ conversationId, senderId, text }) => {
+    try {
+      const msg = await saveMessage(conversationId, senderId, text);
+      io.to(conversationId).emit('receive_message', msg);
+    } catch (err) {
+      socket.emit('error', { message: 'Failed to send message' });
+    }
+  });
+});
 
 if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
