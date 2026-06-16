@@ -10,6 +10,7 @@ import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { getBuddyRecommendations, getPendingRequests, getMyBuddyProfile } from '../../services/buddyService';
 import { getUserProfile } from '../../services/profileService';
+import { getOrCreateConversation } from '../../services/chatService';
 
 const FACULTY_OPTIONS = [
   'All',
@@ -124,9 +125,12 @@ export default function BuddyScreen() {
               <Text style={styles.exclusiveSub}>{exclusiveBuddy.faculty}</Text>
             </View>
 
-            <TouchableOpacity 
-              style={styles.chatButton} 
-              onPress={() => Alert.alert('Coming Soon', 'Live chat system will be implemented next!')}
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={async () => {
+                const conv = await getOrCreateConversation(currentUserId, exclusiveBuddy.id);
+                router.push(`/chat/${conv.conversationId}?name=${encodeURIComponent(exclusiveBuddy.name)}`);
+              }}
             >
               <Ionicons name="chatbubbles" size={20} color="#FFF" />
               <Text style={styles.chatButtonText}>Chat with {exclusiveBuddy.name}</Text>
