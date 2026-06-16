@@ -1,5 +1,7 @@
 import Constants from 'expo-constants';
 import { io } from 'socket.io-client';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebaseConfig';
 
 const BASE_URL = Constants.expoConfig?.extra?.backendUrl;
 
@@ -62,11 +64,21 @@ export const joinRoom = (conversationId) => {
   }
 };
 
-// Send a message through the socket (server saves it to Firestore and broadcasts it back)
-export const sendSocketMessage = (conversationId, senderId, text) => {
+// Send a text or image message through the socket
+export const sendSocketMessage = (conversationId, senderId, text, type = 'text', imageUrl = null) => {
   if (socket) {
-    socket.emit('send_message', { conversationId, senderId, text });
+    socket.emit('send_message', { conversationId, senderId, text, type, imageUrl });
   }
+};
+
+// Upload an image to Firebase Storage and return its public download URL
+export const uploadImage = async (localUri) => {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  const filename = `chat_images/${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const storageRef = ref(storage, filename);
+  await uploadBytes(storageRef, blob);
+  return await getDownloadURL(storageRef);
 };
 
 // Listen for incoming messages — returns an unsubscribe function to clean up on unmount

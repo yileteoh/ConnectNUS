@@ -21,9 +21,9 @@ io.on('connection', (socket) => {
     socket.join(conversationId);
   });
 
-  socket.on('send_message', async ({ conversationId, senderId, text }) => {
+  socket.on('send_message', async ({ conversationId, senderId, text, type, imageUrl }) => {
     try {
-      const msg = await saveMessage(conversationId, senderId, text);
+      const msg = await saveMessage(conversationId, senderId, text, type, imageUrl);
       io.to(conversationId).emit('receive_message', msg);
     } catch (err) {
       socket.emit('error', { message: 'Failed to send message' });

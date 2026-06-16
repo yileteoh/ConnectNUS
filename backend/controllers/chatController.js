@@ -91,19 +91,24 @@ const getMessages = async (req, res) => {
 
 // Non-route helper used by the Socket.io handler in server.js
 // Saves a message to Firestore and updates the conversation's lastMessage preview
-const saveMessage = async (conversationId, senderId, text) => {
+const saveMessage = async (conversationId, senderId, text, type = 'text', imageUrl = null) => {
   const convRef = db.collection('conversations').doc(conversationId);
   const messagesRef = convRef.collection('messages');
 
-  const msgDoc = await messagesRef.add({
+  const messageData = {
     senderId,
     text,
+    type,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  };
+  if (imageUrl) messageData.imageUrl = imageUrl;
 
-  // Keep the conversation's lastMessage preview up to date for the inbox
+  const msgDoc = await messagesRef.add(messageData);
+
+  // Preview text for inbox: image messages show a placeholder label
+  const previewText = type === 'image' ? '📷 Photo' : text;
   await convRef.update({
-    lastMessage: { text, senderId },
+    lastMessage: { text: previewText, senderId },
     lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -111,6 +116,8 @@ const saveMessage = async (conversationId, senderId, text) => {
     messageId: msgDoc.id,
     senderId,
     text,
+    type,
+    imageUrl,
     timestamp: Date.now(),
   };
 };
