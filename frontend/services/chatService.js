@@ -115,6 +115,31 @@ export const broadcastText = (conversationId, senderId, text, messageId, timesta
   }
 };
 
+// Upload a document to Cloudinary and return its URL
+export const uploadDocument = async (localUri, fileName, mimeType) => {
+  const formData = new FormData();
+  formData.append('file', { uri: localUri, type: mimeType || 'application/octet-stream', name: fileName });
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+    { method: 'POST', body: formData }
+  );
+  const result = await response.json();
+  if (!result.secure_url) {
+    console.error('Cloudinary document upload error:', result);
+    throw new Error(result.error?.message || 'Upload failed');
+  }
+  return result.secure_url;
+};
+
+// Broadcast a document message to other room members — no server-side Firestore save
+export const broadcastDocument = (conversationId, senderId, documentUrl, documentName, messageId, timestamp) => {
+  if (socket) {
+    socket.emit('broadcast_document', { conversationId, senderId, documentUrl, documentName, messageId, timestamp });
+  }
+};
+
 // Clear the unread badge for this user — call when inbox opens
 export const markAsRead = async (userId) => {
   try {

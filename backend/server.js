@@ -57,6 +57,21 @@ io.on('connection', (socket) => {
     });
     setUnreadForParticipants(conversationId, senderId);
   });
+
+  // Document messages are saved to Firestore by the client directly.
+  // This event broadcasts to other room members and marks them as having unread messages.
+  socket.on('broadcast_document', ({ conversationId, senderId, documentUrl, documentName, messageId, timestamp }) => {
+    socket.to(conversationId).emit('receive_message', {
+      messageId,
+      senderId,
+      text: '',
+      type: 'document',
+      documentUrl,
+      documentName,
+      timestamp,
+    });
+    setUnreadForParticipants(conversationId, senderId);
+  });
 });
 
 if (require.main === module) {

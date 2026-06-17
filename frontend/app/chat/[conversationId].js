@@ -7,6 +7,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
@@ -14,7 +16,8 @@ import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimest
 import { auth, db } from '../../firebaseConfig';
 import {
   getMessages, connectSocket, joinRoom,
-  sendSocketMessage, broadcastImage, broadcastText, onMessage, disconnectSocket, uploadImage,
+  sendSocketMessage, broadcastImage, broadcastText, broadcastDocument,
+  onMessage, disconnectSocket, uploadImage, uploadDocument,
 } from '../../services/chatService';
 
 const formatMessageTime = (timestamp) => {
@@ -242,6 +245,41 @@ export default function ChatRoomScreen() {
     }
   };
 
+  const handlePickDocument = () => {
+    setShowAttachMenu(false);
+    setTimeout(() => launchDocumentPicker(), 400);
+  };
+
+  const launchDocumentPicker = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      setUploading(true);
+      const documentUrl = await uploadDocument(asset.uri, asset.name, asset.mimeType);
+      const docReplyTo = replyingTo
+        ? { messageId: replyingTo.messageId, senderId: replyingTo.senderId, text: replyingTo.text || '', type: replyingTo.type || 'text' }
+        : null;
+      setReplyingTo(null);
+      const msgRef = await addDoc(
+        collection(db, 'conversations', conversationId, 'messages'),
+        { senderId: currentUserId, text: '', type: 'document', documentUrl, documentName: asset.name, ...(docReplyTo && { replyTo: docReplyTo }), timestamp: serverTimestamp() }
+      );
+      await updateDoc(doc(db, 'conversations', conversationId), {
+        lastMessage: { text: `📄 ${asset.name}`, senderId: currentUserId },
+        lastMessageTime: serverTimestamp(),
+      });
+      const timestamp = Date.now();
+      setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text: '', type: 'document', documentUrl, documentName: asset.name, timestamp }]);
+      broadcastDocument(conversationId, currentUserId, documentUrl, asset.name, msgRef.id, timestamp);
+      if (otherId) updateDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }).catch(() => {});
+    } catch (error) {
+      Alert.alert('Error', `Failed to send document: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleLongPress = (item, event) => {
     setActionMenu({ item, pageY: event.nativeEvent.pageY });
   };
@@ -273,6 +311,17 @@ export default function ChatRoomScreen() {
     } finally {
       setSavingImage(false);
     }
+  };
+
+  const getDocTypeLabel = (fileName) => fileName?.split('.').pop()?.toUpperCase() || 'FILE';
+  const getDocTypeColor = (fileName) => {
+    const ext = fileName?.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return '#E53935';
+    if (['doc', 'docx'].includes(ext)) return '#1565C0';
+    if (['xls', 'xlsx'].includes(ext)) return '#2E7D32';
+    if (['ppt', 'pptx'].includes(ext)) return '#F57F17';
+    if (ext === 'txt') return '#546E7A';
+    return '#455A64';
   };
 
   const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
@@ -320,7 +369,7 @@ export default function ChatRoomScreen() {
                 {item.replyTo.senderId === currentUserId ? 'You' : (name || 'User')}
               </Text>
               <Text style={isOwn ? styles.replyQuoteTextOwn : styles.replyQuoteTextOther} numberOfLines={1}>
-                {item.replyTo.type === 'image' ? '📷 Photo' : item.replyTo.text}
+                {item.replyTo.type === 'image' ? '📷 Photo' : item.replyTo.type === 'document' ? '📄 Document' : item.replyTo.text}
               </Text>
             </View>
           )}
@@ -332,6 +381,28 @@ export default function ChatRoomScreen() {
                 resizeMode="cover"
                 onError={(e) => console.error('Image failed to load:', e.nativeEvent.error, 'URL:', item.imageUrl)}
               />
+            </TouchableOpacity>
+          ) : item.type === 'document' && item.documentUrl ? (
+            <TouchableOpacity
+              style={styles.documentCard}
+              onPress={() => WebBrowser.openBrowserAsync(item.documentUrl)}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.docTypeBox, { backgroundColor: getDocTypeColor(item.documentName) }]}>
+                <Text style={styles.docTypeText}>{getDocTypeLabel(item.documentName)}</Text>
+              </View>
+              <View style={styles.docInfo}>
+                <Text
+                  style={[styles.docFileName, isOwn ? styles.docFileNameOwn : styles.docFileNameOther]}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.documentName || 'Document'}
+                </Text>
+                <Text style={[styles.docSubLabel, isOwn ? styles.docSubLabelOwn : styles.docSubLabelOther]}>
+                  {getDocTypeLabel(item.documentName)} · Tap to open
+                </Text>
+              </View>
             </TouchableOpacity>
           ) : (
             <>
@@ -523,6 +594,12 @@ export default function ChatRoomScreen() {
               </View>
               <Text style={styles.attachLabel}>Photo Library</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.attachOption} onPress={handlePickDocument}>
+              <View style={[styles.attachIcon, { backgroundColor: '#2e7d32' }]}>
+                <Ionicons name="document-text-outline" size={24} color="#FFF" />
+              </View>
+              <Text style={styles.attachLabel}>Document</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -535,7 +612,7 @@ export default function ChatRoomScreen() {
               {replyingTo.senderId === currentUserId ? 'You' : (name || 'User')}
             </Text>
             <Text style={styles.replyBarText} numberOfLines={1}>
-              {replyingTo.type === 'image' ? '📷 Photo' : replyingTo.text}
+              {replyingTo.type === 'image' ? '📷 Photo' : replyingTo.type === 'document' ? '📄 Document' : replyingTo.text}
             </Text>
           </View>
           <TouchableOpacity onPress={() => setReplyingTo(null)} style={styles.replyBarClose}>
@@ -609,6 +686,16 @@ const styles = StyleSheet.create({
   timeOwn: { color: '#BFD0E8', textAlign: 'right' },
   timeOther: { color: '#999', textAlign: 'left' },
   imageMessage: { width: 200, height: 200, borderRadius: 10 },
+  documentCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, maxWidth: 240 },
+  docTypeBox: { width: 44, height: 44, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 10, flexShrink: 0 },
+  docTypeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.5 },
+  docInfo: { flex: 1 },
+  docFileName: { fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  docFileNameOwn: { color: '#FFF' },
+  docFileNameOther: { color: '#002D5B' },
+  docSubLabel: { fontSize: 11, marginTop: 2 },
+  docSubLabelOwn: { color: 'rgba(255,255,255,0.65)' },
+  docSubLabelOther: { color: '#888' },
   showMoreButton: { marginTop: 4 },
   showMoreOwn: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
   showMoreOther: { fontSize: 13, fontWeight: '600', color: '#002D5B' },
