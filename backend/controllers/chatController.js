@@ -117,16 +117,20 @@ const saveMessage = async (conversationId, senderId, text, type = 'text', imageU
   const convDoc = await convRef.get();
   const participants = convDoc.exists ? (convDoc.data().participants || []) : [];
 
-  const updateData = {
+  await convRef.set({
     lastMessage: { text: previewText, senderId },
     lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
-  };
+  }, { merge: true });
+
+  const unreadUpdate = {};
   participants.forEach((uid) => {
     if (uid !== senderId) {
-      updateData[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
+      unreadUpdate[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
     }
   });
-  await convRef.set(updateData, { merge: true });
+  if (Object.keys(unreadUpdate).length > 0) {
+    await convRef.update(unreadUpdate).catch(() => {});
+  }
 
   return {
     messageId: msgDoc.id,

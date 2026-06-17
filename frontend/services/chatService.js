@@ -161,7 +161,6 @@ export const uploadDocument = async (localUri, fileName, mimeType) => {
     console.error('Cloudinary document upload error:', result);
     throw new Error(result.error?.message || 'Upload failed');
   }
-  console.log('Cloudinary doc upload OK:', result.resource_type, result.format, result.bytes, result.secure_url);
   return result.secure_url;
 };
 
@@ -172,10 +171,10 @@ export const broadcastDocument = (conversationId, senderId, documentUrl, documen
   }
 };
 
-// Clear the unread badge for this user — call when inbox opens
-export const markAsRead = async (userId) => {
+// Clear the unread badge for this user in a specific conversation
+export const markAsRead = async (conversationId, userId) => {
   try {
-    await fetch(`${BASE_URL}/api/chat/read/${userId}`, { method: 'PUT' });
+    await fetch(`${BASE_URL}/api/chat/read/${conversationId}/${userId}`, { method: 'PUT' });
   } catch (e) {}
 };
 

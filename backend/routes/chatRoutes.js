@@ -6,6 +6,6 @@ router.post('/conversations', getOrCreateConversation);
 router.post('/group/:eventId', ensureGroupConversation);
 router.get('/conversations/:userId', getConversations);
 router.get('/messages/:conversationId', getMessages);
-router.put('/read/:userId', markAsRead);
+router.put('/read/:conversationId/:userId', markAsRead);
 
 module.exports = router;

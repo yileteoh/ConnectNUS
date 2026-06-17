@@ -18,7 +18,7 @@ import { auth, db } from '../../firebaseConfig';
 import {
   getMessages, connectSocket, joinRoom,
   sendSocketMessage, broadcastImage, broadcastText, broadcastDocument,
-  onMessage, disconnectSocket, uploadImage, uploadDocument,
+  onMessage, disconnectSocket, uploadImage, uploadDocument, markAsRead,
 } from '../../services/chatService';
 
 const formatMessageTime = (timestamp) => {
@@ -127,9 +127,7 @@ export default function ChatRoomScreen() {
   // Reset this conversation's unread count for the current user when the chat room opens
   useEffect(() => {
     if (!currentUserId || !conversationId) return;
-    setDoc(doc(db, 'conversations', conversationId), {
-      [`unreadCounts.${currentUserId}`]: 0,
-    }, { merge: true }).catch(() => {});
+    markAsRead(conversationId, currentUserId);
   }, [conversationId, currentUserId]);
 
   // Keep ref in sync so socket callback can read current participantInfo without stale closure
@@ -173,13 +171,13 @@ export default function ChatRoomScreen() {
         connectSocket();
         joinRoom(conversationId);
         unsubscribeMessages = onMessage(async (newMsg) => {
-          console.log('Socket received message:', JSON.stringify(newMsg));
           if (newMsg.senderId === currentUserId) return;
           setMessages((prev) => [...prev, newMsg]);
-          // If this sender's profile isn't loaded yet, fetch it now
           if (isGroup && !participantInfoRef.current[newMsg.senderId]) {
             fetchProfiles([newMsg.senderId]);
           }
+          // Mark as read immediately since the user is actively viewing this room
+          markAsRead(conversationId, currentUserId);
         });
       } catch (error) {
         console.error('Failed to set up chat room:', error);
@@ -242,15 +240,13 @@ export default function ChatRoomScreen() {
         }, { merge: true });
         setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text, type: 'text', replyTo, timestamp }]);
         broadcastText(conversationId, currentUserId, text, msgRef.id, timestamp, replyTo);
-        if (otherId) setDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }, { merge: true }).catch(() => {});
       } catch (e) {
         Alert.alert('Error', 'Failed to send message.');
       }
     } else {
-      // Regular text: existing socket flow (server saves to Firestore)
+      // Regular text: existing socket flow (server saves to Firestore and increments unread)
       setMessages((prev) => [...prev, { messageId: `local_${timestamp}`, senderId: currentUserId, text, type: 'text', timestamp }]);
       sendSocketMessage(conversationId, currentUserId, text, 'text', null, null);
-      if (otherId) setDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }, { merge: true }).catch(() => {});
     }
   };
 
@@ -276,7 +272,6 @@ export default function ChatRoomScreen() {
       if (result.canceled) return;
       setUploading(true);
       const imageUrl = await uploadImage(result.assets[0].uri);
-      console.log('Image uploaded, URL:', imageUrl);
 
       // Save directly to Firestore — reliable regardless of socket state
       const imageReplyTo = replyingTo
@@ -304,7 +299,6 @@ export default function ChatRoomScreen() {
       }]);
       // Broadcast to the other user via socket (server does NOT save to Firestore again)
       broadcastImage(conversationId, currentUserId, imageUrl, msgRef.id, timestamp);
-      if (otherId) setDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }, { merge: true }).catch(() => {});
     } catch (error) {
       console.error('Image upload error:', error?.code, error?.message, error);
       Alert.alert('Error', 'Failed to send image. Please try again.');
@@ -340,7 +334,6 @@ export default function ChatRoomScreen() {
       const timestamp = Date.now();
       setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text: '', type: 'document', documentUrl, documentName: asset.name, timestamp }]);
       broadcastDocument(conversationId, currentUserId, documentUrl, asset.name, msgRef.id, timestamp);
-      if (otherId) setDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }, { merge: true }).catch(() => {});
     } catch (error) {
       Alert.alert('Error', `Failed to send document: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -381,7 +374,7 @@ export default function ChatRoomScreen() {
         const convSnap = await getDoc(convRef);
         const theirUnread = convSnap.data()?.unreadCounts?.[otherId] || 0;
         if (theirUnread > 0) {
-          await setDoc(convRef, { [`unreadCounts.${otherId}`]: increment(-1) }, { merge: true });
+          await updateDoc(convRef, { [`unreadCounts.${otherId}`]: increment(-1) }).catch(() => {});
         }
       }
     } catch (error) {
