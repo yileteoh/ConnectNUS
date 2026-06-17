@@ -1,7 +1,8 @@
 import Constants from 'expo-constants';
 import { io } from 'socket.io-client';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebaseConfig';
+
+const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
 const BASE_URL = Constants.expoConfig?.extra?.backendUrl;
 
@@ -71,14 +72,22 @@ export const sendSocketMessage = (conversationId, senderId, text, type = 'text',
   }
 };
 
-// Upload an image to Firebase Storage and return its public download URL
+// Upload an image to Cloudinary and return its public download URL
 export const uploadImage = async (localUri) => {
-  const response = await fetch(localUri);
-  const blob = await response.blob();
-  const filename = `chat_images/${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const storageRef = ref(storage, filename);
-  await uploadBytes(storageRef, blob);
-  return await getDownloadURL(storageRef);
+  const formData = new FormData();
+  formData.append('file', { uri: localUri, type: 'image/jpeg', name: 'photo.jpg' });
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: 'POST', body: formData }
+  );
+  const result = await response.json();
+  if (!result.secure_url) {
+    console.error('Cloudinary upload error:', result);
+    throw new Error(result.error?.message || 'Upload failed');
+  }
+  return result.secure_url;
 };
 
 // Listen for incoming messages — returns an unsubscribe function to clean up on unmount
@@ -88,6 +97,14 @@ export const onMessage = (callback) => {
     return () => socket.off('receive_message', callback);
   }
   return () => {};
+};
+
+// Broadcast an image message to other room members — no server-side Firestore save
+// (the client saves directly to Firestore before calling this)
+export const broadcastImage = (conversationId, senderId, imageUrl, messageId, timestamp) => {
+  if (socket) {
+    socket.emit('broadcast_image', { conversationId, senderId, imageUrl, messageId, timestamp });
+  }
 };
 
 // Disconnect when the user leaves the chat entirely
