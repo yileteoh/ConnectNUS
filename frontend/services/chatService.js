@@ -7,6 +7,18 @@ const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESE
 
 const BASE_URL = Constants.expoConfig?.extra?.backendUrl;
 
+// Ensure a group chat conversation exists for an event; creates it if missing and adds the caller
+export const ensureGroupConversation = async (eventId, eventTitle, userId, userName, userProfilePic) => {
+  const response = await fetch(`${BASE_URL}/api/chat/group/${eventId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ eventTitle, userId, userName, userProfilePic }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message);
+  return result.data;
+};
+
 // Find or create a 1-on-1 conversation between two buddies
 export const getOrCreateConversation = async (userId1, userId2) => {
   try {

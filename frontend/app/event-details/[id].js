@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
 import { getEventDetails, joinEvent, leaveEvent, deleteEvent } from '../../services/eventService';
+import { ensureGroupConversation } from '../../services/chatService';
 import * as Calendar from 'expo-calendar';
 
 const formatEventTime = (isoString) => {
@@ -273,7 +274,11 @@ export default function EventDetailsScreen() {
           <View style={styles.bottomBarRow}>
             <TouchableOpacity
               style={[styles.joinButton, styles.chatButton, { flex: 1 }]}
-              onPress={() => router.push(`/chat/event_${id}?name=${encodeURIComponent(event.title)}`)}
+              onPress={async () => {
+                const me = currentAttendees.find(a => a.uid === currentUserId) || {};
+                await ensureGroupConversation(id, event.title, currentUserId, me.name, me.profilePicUrl).catch(() => {});
+                router.push(`/chat/event_${id}?name=${encodeURIComponent(event.title)}`);
+              }}
             >
               <Ionicons name="chatbubbles-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
               <Text style={styles.joinButtonText}>Group Chat</Text>
@@ -292,7 +297,11 @@ export default function EventDetailsScreen() {
           <View style={styles.bottomBarRow}>
             <TouchableOpacity
               style={[styles.joinButton, styles.chatButton, { flex: 1 }]}
-              onPress={() => router.push(`/chat/event_${id}?name=${encodeURIComponent(event.title)}`)}
+              onPress={async () => {
+                const me = currentAttendees.find(a => a.uid === currentUserId) || {};
+                await ensureGroupConversation(id, event.title, currentUserId, me.name, me.profilePicUrl).catch(() => {});
+                router.push(`/chat/event_${id}?name=${encodeURIComponent(event.title)}`);
+              }}
             >
               <Ionicons name="chatbubbles-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
               <Text style={styles.joinButtonText}>Group Chat</Text>

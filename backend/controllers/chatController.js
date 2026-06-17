@@ -44,19 +44,26 @@ const getOrCreateConversation = async (req, res) => {
 };
 
 // GET /api/chat/conversations/:userId
-// Returns all conversations the user is part of, newest message first
+// Returns all conversations the user is part of, newest message first.
+// orderBy('lastMessageTime') is intentionally omitted: Firestore excludes documents
+// where the field is null, which would hide newly created group chats. We sort here instead.
 const getConversations = async (req, res) => {
   try {
     const { userId } = req.params;
     const snapshot = await db.collection('conversations')
       .where('participants', 'array-contains', userId)
-      .orderBy('lastMessageTime', 'desc')
       .get();
 
     const conversations = snapshot.docs.map((doc) => ({
       conversationId: doc.id,
       ...doc.data(),
     }));
+
+    conversations.sort((a, b) => {
+      const tA = a.lastMessageTime?._seconds ?? -Infinity;
+      const tB = b.lastMessageTime?._seconds ?? -Infinity;
+      return tB - tA;
+    });
 
     return res.status(200).json({ status: 'success', data: conversations });
   } catch (error) {
@@ -162,6 +169,40 @@ const setUnreadForParticipants = async (conversationId, senderId) => {
   } catch (e) {}
 };
 
+// POST /api/chat/group/:eventId — creates the group conversation if missing, adds caller to participants
+const ensureGroupConversation = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { eventTitle, userId, userName, userProfilePic } = req.body;
+    const convRef = db.collection('conversations').doc(`event_${eventId}`);
+    const convDoc = await convRef.get();
+
+    if (!convDoc.exists) {
+      await convRef.set({
+        type: 'group',
+        eventId,
+        eventTitle: eventTitle || 'Group Chat',
+        participants: [userId],
+        participantInfo: {
+          [userId]: { name: userName || 'User', profilePicUrl: userProfilePic || '' },
+        },
+        lastMessage: null,
+        lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } else if (!convDoc.data().participants?.includes(userId)) {
+      await convRef.update({
+        participants: admin.firestore.FieldValue.arrayUnion(userId),
+        [`participantInfo.${userId}`]: { name: userName || 'User', profilePicUrl: userProfilePic || '' },
+      });
+    }
+
+    return res.status(200).json({ status: 'success', data: { conversationId: `event_${eventId}` } });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
 // ── Group chat helpers (called by eventController, not exposed as routes) ──────
 
 const createGroupConversation = async (eventId, eventTitle, creatorId, creatorInfo) => {
@@ -177,7 +218,7 @@ const createGroupConversation = async (eventId, eventTitle, creatorId, creatorIn
       [creatorId]: { name: creatorInfo.name || 'User', profilePicUrl: creatorInfo.profilePicUrl || '' },
     },
     lastMessage: null,
-    lastMessageTime: null,
+    lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 };
@@ -205,6 +246,7 @@ const deleteGroupConversation = async (eventId) => {
 module.exports = {
   getOrCreateConversation, getConversations, getMessages, saveMessage,
   markAsRead, setUnreadForParticipants,
+  ensureGroupConversation,
   createGroupConversation, addUserToGroupConversation,
   removeUserFromGroupConversation, deleteGroupConversation,
 };

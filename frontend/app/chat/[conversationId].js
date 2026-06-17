@@ -80,6 +80,7 @@ export default function ChatRoomScreen() {
   const isGroup = conversationId?.startsWith('event_');
   const eventId = isGroup ? conversationId.replace('event_', '') : null;
   const [participantInfo, setParticipantInfo] = useState({});
+  const participantInfoRef = useRef({});
   const [myAvatar, setMyAvatar] = useState('');
 
   // Insert date-separator objects between messages from different days
@@ -131,6 +132,27 @@ export default function ChatRoomScreen() {
     }, { merge: true }).catch(() => {});
   }, [conversationId, currentUserId]);
 
+  // Keep ref in sync so socket callback can read current participantInfo without stale closure
+  useEffect(() => {
+    participantInfoRef.current = participantInfo;
+  }, [participantInfo]);
+
+  // Fetch user profiles for a list of UIDs and merge into participantInfo state
+  const fetchProfiles = async (uids) => {
+    if (!uids.length) return;
+    const snaps = await Promise.all(uids.map((uid) => getDoc(doc(db, 'users', uid))));
+    const updates = {};
+    snaps.forEach((snap, i) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        updates[uids[i]] = { name: d.name || 'User', profilePicUrl: d.profilePicUrl || '' };
+      }
+    });
+    if (Object.keys(updates).length) {
+      setParticipantInfo((prev) => ({ ...prev, ...updates }));
+    }
+  };
+
   // Load message history and connect socket
   useEffect(() => {
     let unsubscribeMessages = () => {};
@@ -139,19 +161,25 @@ export default function ChatRoomScreen() {
       try {
         const history = await getMessages(conversationId);
         setMessages(history);
-        // For group chats, load participant names + avatars from the conversation doc
         if (isGroup) {
-          const convDoc = await getDoc(doc(db, 'conversations', conversationId));
-          if (convDoc.exists()) setParticipantInfo(convDoc.data().participantInfo || {});
+          // Fetch profiles of every unique sender in history directly from users collection
+          // (more reliable than the conversation doc's participantInfo, works for old events)
+          const senderIds = [...new Set(
+            history.map((m) => m.senderId).filter((id) => id && id !== currentUserId)
+          )];
+          await fetchProfiles(senderIds);
         }
         setLoading(false);
         connectSocket();
         joinRoom(conversationId);
-        unsubscribeMessages = onMessage((newMsg) => {
+        unsubscribeMessages = onMessage(async (newMsg) => {
           console.log('Socket received message:', JSON.stringify(newMsg));
-          // Skip all our own echoes — we add every own message to local state immediately
           if (newMsg.senderId === currentUserId) return;
           setMessages((prev) => [...prev, newMsg]);
+          // If this sender's profile isn't loaded yet, fetch it now
+          if (isGroup && !participantInfoRef.current[newMsg.senderId]) {
+            fetchProfiles([newMsg.senderId]);
+          }
         });
       } catch (error) {
         console.error('Failed to set up chat room:', error);
@@ -548,7 +576,13 @@ export default function ChatRoomScreen() {
     return (
       <View style={[styles.messageRow, isOwn ? styles.rowOwn : styles.rowOther]}>
         {isGroup && !isOwn && (
-          <View style={styles.groupMsgAvatarWrap}>{renderAvatar(senderAvatar)}</View>
+          <TouchableOpacity
+            style={styles.groupMsgAvatarWrap}
+            onPress={() => router.push(`/user/${item.senderId}`)}
+            activeOpacity={0.7}
+          >
+            {renderAvatar(senderAvatar)}
+          </TouchableOpacity>
         )}
         {isGroup ? (
           <View style={[styles.bubbleCol, isOwn ? styles.bubbleColOwn : styles.bubbleColOther]}>
