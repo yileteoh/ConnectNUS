@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
-import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import {
   getMessages, connectSocket, joinRoom,
@@ -60,6 +60,8 @@ export default function ChatRoomScreen() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [otherUserStatus, setOtherUserStatus] = useState({ isOnline: false, lastSeen: null });
+  const [displayName, setDisplayName] = useState(name ? decodeURIComponent(name) : '');
+  const [displayAvatar, setDisplayAvatar] = useState(avatar ? decodeURIComponent(avatar) : '');
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const [savingImage, setSavingImage] = useState(false);
@@ -84,19 +86,30 @@ export default function ChatRoomScreen() {
     return result;
   }, [messages]);
 
-  // Listen to the other user's online/lastSeen status in real time
+  // Listen to the other user's profile + online status in real time
   useEffect(() => {
     if (!otherId) return;
     const unsubscribe = onSnapshot(doc(db, 'users', otherId), (snap) => {
       if (snap.exists()) {
+        const data = snap.data();
         setOtherUserStatus({
-          isOnline: snap.data().isOnline || false,
-          lastSeen: snap.data().lastSeen || null,
+          isOnline: data.isOnline || false,
+          lastSeen: data.lastSeen || null,
         });
+        if (data.name) setDisplayName(data.name);
+        if (data.profilePicUrl) setDisplayAvatar(data.profilePicUrl);
       }
     });
     return unsubscribe;
   }, [otherId]);
+
+  // Reset this conversation's unread count for the current user when the chat room opens
+  useEffect(() => {
+    if (!currentUserId || !conversationId) return;
+    updateDoc(doc(db, 'conversations', conversationId), {
+      [`unreadCounts.${currentUserId}`]: 0,
+    }).catch(() => {});
+  }, [conversationId, currentUserId]);
 
   // Load message history and connect socket
   useEffect(() => {
@@ -158,6 +171,7 @@ export default function ChatRoomScreen() {
         });
         setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text, type: 'text', replyTo, timestamp }]);
         broadcastText(conversationId, currentUserId, text, msgRef.id, timestamp, replyTo);
+        if (otherId) updateDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }).catch(() => {});
       } catch (e) {
         Alert.alert('Error', 'Failed to send message.');
       }
@@ -165,6 +179,7 @@ export default function ChatRoomScreen() {
       // Regular text: existing socket flow (server saves to Firestore)
       setMessages((prev) => [...prev, { messageId: `local_${timestamp}`, senderId: currentUserId, text, type: 'text', timestamp }]);
       sendSocketMessage(conversationId, currentUserId, text, 'text', null, null);
+      if (otherId) updateDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }).catch(() => {});
     }
   };
 
@@ -218,6 +233,7 @@ export default function ChatRoomScreen() {
       }]);
       // Broadcast to the other user via socket (server does NOT save to Firestore again)
       broadcastImage(conversationId, currentUserId, imageUrl, msgRef.id, timestamp);
+      if (otherId) updateDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }).catch(() => {});
     } catch (error) {
       console.error('Image upload error:', error?.code, error?.message, error);
       Alert.alert('Error', 'Failed to send image. Please try again.');
@@ -378,13 +394,13 @@ export default function ChatRoomScreen() {
           onPress={() => otherId && router.push(`/user/${otherId}`)}
           activeOpacity={0.7}
         >
-          {avatar && decodeURIComponent(avatar) ? (
-            <Image source={{ uri: decodeURIComponent(avatar) }} style={styles.headerAvatar} />
+          {displayAvatar ? (
+            <Image source={{ uri: displayAvatar }} style={styles.headerAvatar} />
           ) : (
             <Image source={require('../../assets/profile_image.jpg')} style={styles.headerAvatar} />
           )}
           <View>
-            <Text style={styles.headerName} numberOfLines={1}>{name || 'Chat'}</Text>
+            <Text style={styles.headerName} numberOfLines={1}>{displayName || 'Chat'}</Text>
             <Text style={[styles.headerStatus, statusText === 'Active now' && styles.headerStatusOnline]}>
               {statusText}
             </Text>

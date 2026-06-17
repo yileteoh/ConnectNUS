@@ -106,12 +106,20 @@ const saveMessage = async (conversationId, senderId, text, type = 'text', imageU
 
   const msgDoc = await messagesRef.add(messageData);
 
-  // Preview text for inbox: image messages show a placeholder label
   const previewText = type === 'image' ? '📷 Photo' : text;
-  await convRef.update({
+  const convDoc = await convRef.get();
+  const participants = convDoc.exists ? (convDoc.data().participants || []) : [];
+
+  const updateData = {
     lastMessage: { text: previewText, senderId },
     lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  participants.forEach((uid) => {
+    if (uid !== senderId) {
+      updateData[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
+    }
   });
+  await convRef.update(updateData);
 
   return {
     messageId: msgDoc.id,
@@ -124,4 +132,34 @@ const saveMessage = async (conversationId, senderId, text, type = 'text', imageU
   };
 };
 
-module.exports = { getOrCreateConversation, getConversations, getMessages, saveMessage };
+// PUT /api/chat/read/:conversationId/:userId — resets the unread count for this user in this conversation
+const markAsRead = async (req, res) => {
+  try {
+    const { conversationId, userId } = req.params;
+    await db.collection('conversations').doc(conversationId).update({
+      [`unreadCounts.${userId}`]: 0,
+    });
+    return res.status(200).json({ status: 'success' });
+  } catch (error) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+// Increments unread counts for all participants except the sender.
+// Called by broadcast_text and broadcast_image socket handlers (which bypass saveMessage).
+const setUnreadForParticipants = async (conversationId, senderId) => {
+  try {
+    const convRef = db.collection('conversations').doc(conversationId);
+    const convDoc = await convRef.get();
+    const participants = convDoc.exists ? (convDoc.data().participants || []) : [];
+    const updateData = {};
+    participants.forEach((uid) => {
+      if (uid !== senderId) {
+        updateData[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
+      }
+    });
+    if (Object.keys(updateData).length > 0) await convRef.update(updateData);
+  } catch (e) {}
+};
+
+module.exports = { getOrCreateConversation, getConversations, getMessages, saveMessage, markAsRead, setUnreadForParticipants };

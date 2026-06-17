@@ -115,6 +115,13 @@ export const broadcastText = (conversationId, senderId, text, messageId, timesta
   }
 };
 
+// Clear the unread badge for this user — call when inbox opens
+export const markAsRead = async (userId) => {
+  try {
+    await fetch(`${BASE_URL}/api/chat/read/${userId}`, { method: 'PUT' });
+  } catch (e) {}
+};
+
 // Disconnect when the user leaves the chat entirely
 export const disconnectSocket = () => {
   if (socket) {

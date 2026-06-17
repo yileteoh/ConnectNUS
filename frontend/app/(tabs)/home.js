@@ -1,11 +1,11 @@
 // frontend/app/home.js
 import React, { useCallback, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
   SafeAreaView,
   Image,
   ActivityIndicator,
@@ -13,12 +13,14 @@ import {
   StatusBar
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUserProfile } from '../../services/profileService';
 
 export default function HomeScreen() {
+  const router = useRouter();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
 
       {/* Header Section */}
-      <Header showSettings={false}/>
+      <Header showSettings={false} onNotificationPress={() => router.push('/(tabs)/chat')} />
 
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
 

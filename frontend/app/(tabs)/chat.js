@@ -9,10 +9,20 @@ import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { getConversations } from '../../services/chatService';
 
-// Converts a timestamp (milliseconds) into a short readable string for the inbox
-const formatTime = (timestamp) => {
-  if (!timestamp) return '';
-  const diff = Date.now() - timestamp;
+// Converts a Firestore timestamp (any format) to milliseconds
+const toMs = (ts) => {
+  if (!ts) return null;
+  if (typeof ts.toMillis === 'function') return ts.toMillis(); // client Timestamp
+  if (ts._seconds) return ts._seconds * 1000;                 // admin SDK serialized
+  if (typeof ts === 'number') return ts;
+  return null;
+};
+
+// Converts a timestamp into a short readable string for the inbox
+const formatTime = (ts) => {
+  const ms = toMs(ts);
+  if (!ms) return '';
+  const diff = Date.now() - ms;
   const minutes = Math.floor(diff / 60000);
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes}m ago`;
@@ -56,19 +66,19 @@ export default function ChatScreen() {
   }, [currentUserId]);
 
   const renderConversationCard = ({ item }) => {
-    // Find the other participant (not the current user)
     const otherId = item.participants.find((id) => id !== currentUserId);
     const otherUser = item.participantInfo?.[otherId] || {};
     const lastText = item.lastMessage?.text || 'No messages yet';
-    const lastTime = item.lastMessageTime?.toMillis
-      ? formatTime(item.lastMessageTime.toMillis())  
-      : formatTime(item.lastMessageTime);       
+    const lastTime = formatTime(item.lastMessageTime);
+    const unread = item.unreadCounts?.[currentUserId] || 0;
 
     return (
       <TouchableOpacity
         style={styles.card}
         activeOpacity={0.8}
-        onPress={() => router.push(`/chat/${item.conversationId}`)}
+        onPress={() => router.push(
+          `/chat/${item.conversationId}?name=${encodeURIComponent(otherUser.name || '')}&otherId=${otherId}&avatar=${encodeURIComponent(otherUser.profilePicUrl || '')}`
+        )}
       >
         {otherUser.profilePicUrl ? (
           <Image source={{ uri: otherUser.profilePicUrl }} style={styles.avatar} />
@@ -77,10 +87,17 @@ export default function ChatScreen() {
         )}
         <View style={styles.cardBody}>
           <View style={styles.cardTop}>
-            <Text style={styles.name}>{otherUser.name || 'User'}</Text>
+            <Text style={[styles.name, unread > 0 && styles.nameBold]}>{otherUser.name || 'User'}</Text>
             <Text style={styles.time}>{lastTime}</Text>
           </View>
-          <Text style={styles.preview} numberOfLines={1}>{lastText}</Text>
+          <View style={styles.cardBottom}>
+            <Text style={[styles.preview, unread > 0 && styles.previewBold]} numberOfLines={1}>{lastText}</Text>
+            {unread > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unread > 99 ? '99+' : String(unread)}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -129,7 +146,20 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   name: { fontSize: 16, fontWeight: 'bold', color: '#002D5B' },
   time: { fontSize: 12, color: '#999' },
-  preview: { fontSize: 14, color: '#666' },
+  preview: { fontSize: 14, color: '#666', flex: 1, marginRight: 8 },
+  previewBold: { color: '#333', fontWeight: '600' },
+  nameBold: { fontWeight: '800' },
+  cardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  unreadBadge: {
+    backgroundColor: '#E53935',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  unreadBadgeText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100, paddingHorizontal: 30 },
   emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#002D5B', marginTop: 12 },

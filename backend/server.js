@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const routes = require('./routes');
-const { saveMessage } = require('./controllers/chatController');
+const { saveMessage, setUnreadForParticipants } = require('./controllers/chatController');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,7 +31,7 @@ io.on('connection', (socket) => {
   });
 
   // Image messages are saved to Firestore by the client directly.
-  // This event only broadcasts the message to other room members.
+  // This event broadcasts to other room members and marks them as having unread messages.
   socket.on('broadcast_image', ({ conversationId, senderId, imageUrl, messageId, timestamp }) => {
     socket.to(conversationId).emit('receive_message', {
       messageId,
@@ -41,10 +41,11 @@ io.on('connection', (socket) => {
       imageUrl,
       timestamp,
     });
+    setUnreadForParticipants(conversationId, senderId);
   });
 
   // Reply-text messages are saved to Firestore by the client directly.
-  // This event only broadcasts to other room members.
+  // This event broadcasts to other room members and marks them as having unread messages.
   socket.on('broadcast_text', ({ conversationId, senderId, text, messageId, timestamp, replyTo }) => {
     socket.to(conversationId).emit('receive_message', {
       messageId,
@@ -54,6 +55,7 @@ io.on('connection', (socket) => {
       replyTo,
       timestamp,
     });
+    setUnreadForParticipants(conversationId, senderId);
   });
 });
 
