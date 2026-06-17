@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable,
   SafeAreaView, Image, Platform, StatusBar, TextInput,
   KeyboardAvoidingView, ActivityIndicator, Alert, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import {
   getMessages, connectSocket, joinRoom,
-  sendSocketMessage, onMessage, disconnectSocket, uploadImage,
+  sendSocketMessage, broadcastImage, onMessage, disconnectSocket, uploadImage,
 } from '../../services/chatService';
 
 const formatMessageTime = (timestamp) => {
@@ -32,6 +32,17 @@ const formatLastSeen = (isOnline, lastSeen) => {
   return `Last seen ${Math.floor(hours / 24)}d ago`;
 };
 
+const formatDateSeparator = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return 'Today';
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 export default function ChatRoomScreen() {
   const router = useRouter();
   const { conversationId, name, otherId, avatar } = useLocalSearchParams();
@@ -44,6 +55,21 @@ export default function ChatRoomScreen() {
   const [otherUserStatus, setOtherUserStatus] = useState({ isOnline: false, lastSeen: null });
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const flatListRef = useRef(null);
+
+  // Insert date-separator objects between messages from different days
+  const flatListData = useMemo(() => {
+    const result = [];
+    let lastDateStr = null;
+    messages.forEach((msg) => {
+      const dateStr = msg.timestamp ? new Date(msg.timestamp).toDateString() : null;
+      if (dateStr && dateStr !== lastDateStr) {
+        result.push({ _separatorId: `sep_${msg.timestamp}`, date: msg.timestamp });
+        lastDateStr = dateStr;
+      }
+      result.push(msg);
+    });
+    return result;
+  }, [messages]);
 
   // Listen to the other user's online/lastSeen status in real time
   useEffect(() => {
@@ -71,6 +97,9 @@ export default function ChatRoomScreen() {
         connectSocket();
         joinRoom(conversationId);
         unsubscribeMessages = onMessage((newMsg) => {
+          console.log('Socket received message:', JSON.stringify(newMsg));
+          // Skip all our own echoes — we add every own message to local state immediately
+          if (newMsg.senderId === currentUserId) return;
           setMessages((prev) => [...prev, newMsg]);
         });
       } catch (error) {
@@ -97,41 +126,96 @@ export default function ChatRoomScreen() {
     const text = inputText.trim();
     if (!text) return;
     setInputText('');
+    // Add locally for instant feedback; skip our own socket echo in onMessage
+    setMessages((prev) => [...prev, {
+      messageId: `local_${Date.now()}`,
+      senderId: currentUserId,
+      text,
+      type: 'text',
+      timestamp: Date.now(),
+    }]);
     sendSocketMessage(conversationId, currentUserId, text, 'text', null);
   };
 
-  const handlePickImage = async (fromCamera) => {
+  // Step 1: close the modal synchronously, then schedule the picker after the animation finishes
+  const handlePickImage = (fromCamera) => {
     setShowAttachMenu(false);
+    setTimeout(() => launchPicker(fromCamera), 400);
+  };
+
+  // Step 2: run after modal has fully dismissed
+  const launchPicker = async (fromCamera) => {
     try {
       let result;
       if (fromCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') return Alert.alert('Permission needed', 'Camera access is required.');
-        result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+        result = await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.7 });
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') return Alert.alert('Permission needed', 'Photo library access is required.');
-        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+        result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.7 });
       }
-
       if (result.canceled) return;
       setUploading(true);
       const imageUrl = await uploadImage(result.assets[0].uri);
-      sendSocketMessage(conversationId, currentUserId, '', 'image', imageUrl);
+      console.log('Image uploaded, URL:', imageUrl);
+
+      // Save directly to Firestore — reliable regardless of socket state
+      const msgRef = await addDoc(
+        collection(db, 'conversations', conversationId, 'messages'),
+        { senderId: currentUserId, text: '', type: 'image', imageUrl, timestamp: serverTimestamp() }
+      );
+      await updateDoc(doc(db, 'conversations', conversationId), {
+        lastMessage: { text: '📷 Photo', senderId: currentUserId },
+        lastMessageTime: serverTimestamp(),
+      });
+
+      const timestamp = Date.now();
+      // Add to local state with the real Firestore messageId
+      setMessages((prev) => [...prev, {
+        messageId: msgRef.id,
+        senderId: currentUserId,
+        text: '',
+        type: 'image',
+        imageUrl,
+        timestamp,
+      }]);
+      // Broadcast to the other user via socket (server does NOT save to Firestore again)
+      broadcastImage(conversationId, currentUserId, imageUrl, msgRef.id, timestamp);
     } catch (error) {
+      console.error('Image upload error:', error?.code, error?.message, error);
       Alert.alert('Error', 'Failed to send image. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
-  const renderMessage = ({ item }) => {
+  const renderItem = ({ item }) => {
+    // Date separator row
+    if (item._separatorId) {
+      return (
+        <View style={styles.dateSeparatorRow}>
+          <View style={styles.dateSeparatorLine} />
+          <Text style={styles.dateSeparatorText}>{formatDateSeparator(item.date)}</Text>
+          <View style={styles.dateSeparatorLine} />
+        </View>
+      );
+    }
+
+    // Regular message bubble
     const isOwn = item.senderId === currentUserId;
     return (
       <View style={[styles.messageRow, isOwn ? styles.rowOwn : styles.rowOther]}>
-        <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
+        <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther,
+          item.type === 'image' && item.imageUrl ? styles.bubbleImage : null]}>
           {item.type === 'image' && item.imageUrl ? (
-            <Image source={{ uri: item.imageUrl }} style={styles.imageMessage} resizeMode="cover" />
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={styles.imageMessage}
+              resizeMode="cover"
+              onError={(e) => console.error('Image failed to load:', e.nativeEvent.error, 'URL:', item.imageUrl)}
+            />
           ) : (
             <Text style={[styles.bubbleText, isOwn ? styles.textOwn : styles.textOther]}>
               {item.text}
@@ -161,12 +245,10 @@ export default function ChatRoomScreen() {
           onPress={() => otherId && router.push(`/user/${otherId}`)}
           activeOpacity={0.7}
         >
-          {avatar ? (
+          {avatar && decodeURIComponent(avatar) ? (
             <Image source={{ uri: decodeURIComponent(avatar) }} style={styles.headerAvatar} />
           ) : (
-            <View style={styles.headerAvatarPlaceholder}>
-              <Ionicons name="person" size={20} color="#FFF" />
-            </View>
+            <Image source={require('../../assets/profile_image.jpg')} style={styles.headerAvatar} />
           )}
           <View>
             <Text style={styles.headerName} numberOfLines={1}>{name || 'Chat'}</Text>
@@ -194,9 +276,9 @@ export default function ChatRoomScreen() {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.messageId}
-          renderItem={renderMessage}
+          data={flatListData}
+          keyExtractor={(item) => item._separatorId || item.messageId}
+          renderItem={renderItem}
           contentContainerStyle={styles.messageList}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -208,8 +290,9 @@ export default function ChatRoomScreen() {
       )}
 
       {/* Attachment menu modal */}
-      <Modal visible={showAttachMenu} transparent animationType="fade" onRequestClose={() => setShowAttachMenu(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAttachMenu(false)}>
+      <Modal visible={showAttachMenu} transparent animationType="none" onRequestClose={() => setShowAttachMenu(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowAttachMenu(false)} />
           <View style={styles.attachMenu}>
             <TouchableOpacity style={styles.attachOption} onPress={() => handlePickImage(true)}>
               <View style={[styles.attachIcon, { backgroundColor: '#002D5B' }]}>
@@ -224,7 +307,7 @@ export default function ChatRoomScreen() {
               <Text style={styles.attachLabel}>Photo Library</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* Input bar */}
@@ -270,7 +353,6 @@ const styles = StyleSheet.create({
   backButton: { marginRight: 6 },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   headerAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  headerAvatarPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
   headerName: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
   headerStatus: { fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
   headerStatusOnline: { color: '#90EE90' },
@@ -285,13 +367,19 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '75%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18 },
   bubbleOwn: { backgroundColor: '#002D5B', borderBottomRightRadius: 4 },
   bubbleOther: { backgroundColor: '#FFF', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#E0E0E0' },
+  bubbleImage: { paddingHorizontal: 4, paddingVertical: 4 },
   bubbleText: { fontSize: 15, lineHeight: 21 },
   textOwn: { color: '#FFF' },
   textOther: { color: '#333' },
   bubbleTime: { fontSize: 11, marginTop: 4 },
   timeOwn: { color: '#BFD0E8', textAlign: 'right' },
   timeOther: { color: '#999', textAlign: 'left' },
-  imageMessage: { width: 200, height: 200, borderRadius: 12 },
+  imageMessage: { width: 200, height: 200, borderRadius: 10 },
+
+  // Date separator
+  dateSeparatorRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 14, paddingHorizontal: 8 },
+  dateSeparatorLine: { flex: 1, height: 1, backgroundColor: '#D0D0D0' },
+  dateSeparatorText: { fontSize: 12, color: '#888', marginHorizontal: 10, fontWeight: '500' },
 
   // Empty state
   emptyState: { alignItems: 'center', marginTop: 80 },
