@@ -29,6 +29,19 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: 'Failed to send message' });
     }
   });
+
+  // Image messages are saved to Firestore by the client directly.
+  // This event only broadcasts the message to other room members.
+  socket.on('broadcast_image', ({ conversationId, senderId, imageUrl, messageId, timestamp }) => {
+    socket.to(conversationId).emit('receive_message', {
+      messageId,
+      senderId,
+      text: '',
+      type: 'image',
+      imageUrl,
+      timestamp,
+    });
+  });
 });
 
 if (require.main === module) {
