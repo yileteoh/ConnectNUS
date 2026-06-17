@@ -16,13 +16,14 @@ import {
   StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { auth } from '../firebaseConfig';
 import {
   emptyProfile,
-  isValidHttpUrl,
   normalizeProfile,
   updateUserProfile,
 } from '../services/profileService';
+import { uploadImage } from '../services/chatService';
 import {
   FACULTY_OPTIONS,
   INTEREST_OPTIONS,
@@ -51,6 +52,7 @@ export default function ProfileForm({
   const [moduleQuery, setModuleQuery] = useState('');
   const [customInterest, setCustomInterest] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [allModules, setAllModules] = useState([]);
   const [isFetchingModules, setIsFetchingModules] = useState(true);
 
@@ -138,6 +140,31 @@ export default function ProfileForm({
     setCustomInterest('');
   };
 
+  const handlePickProfilePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Photo library access is required to upload a profile picture.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (result.canceled) return;
+      setUploadingPhoto(true);
+      const url = await uploadImage(result.assets[0].uri);
+      updateField('profilePicUrl', url);
+    } catch (error) {
+      console.error('Profile photo upload error:', error?.code, error?.message, error);
+      Alert.alert('Upload failed', 'Failed to upload profile picture. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleSave = async () => {
     const userId = auth.currentUser?.uid;
 
@@ -157,11 +184,6 @@ export default function ProfileForm({
         'Missing basic profile',
         'Please complete name, faculty, year, at least one module, and at least one interest.'
       );
-      return;
-    }
-
-    if (form.profilePicUrl && form.profilePicUrl.trim() !== '' && !isValidHttpUrl(form.profilePicUrl)) {
-      Alert.alert('Invalid profile picture link', 'Please enter a valid http:// or https:// image URL.');
       return;
     }
 
@@ -391,26 +413,25 @@ export default function ProfileForm({
               textAlignVertical="top"
             />
 
-            <Text style={styles.label}>Profile Picture URL</Text>
-            <View style={styles.avatarPreviewRow}>
-              <Image
-                source={getPreviewSource()}
-                style={styles.avatarPreview}
-              />
-              <View style={styles.avatarPreviewText}>
-                <Text style={styles.previewTitle}>Profile picture preview</Text>
-                <Text style={styles.helperText}>
-                  If no picture link is provided, the default avatar will be used.
-                </Text>
-              </View>
+            <Text style={styles.label}>Profile Picture</Text>
+            <View style={styles.avatarPickerRow}>
+              <TouchableOpacity
+                onPress={handlePickProfilePhoto}
+                disabled={uploadingPhoto || saving}
+                style={styles.avatarPickerButton}
+              >
+                <Image source={getPreviewSource()} style={styles.avatarPickerImage} />
+                <View style={styles.avatarEditBadge}>
+                  {uploadingPhoto
+                    ? <ActivityIndicator size="small" color="#FFF" />
+                    : <Ionicons name="camera" size={16} color="#FFF" />
+                  }
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.helperText}>
+                Tap the photo to upload from your library.{'\n'}Default avatar is used if none is set.
+              </Text>
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="https://..."
-              value={form.profilePicUrl}
-              onChangeText={(value) => updateField('profilePicUrl', value)}
-              autoCapitalize="none"
-            />
 
             <Text style={styles.label}>Social Links</Text>
             <Text style={[styles.helperText, { color: '#002D5B', fontWeight: '500' }]}>
@@ -557,31 +578,33 @@ const styles = StyleSheet.create({
     paddingTop: 12, 
     marginBottom: 14,
   },
-  avatarPreviewRow: {
+  avatarPickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  avatarPreview: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    marginRight: 12,
+  avatarPickerButton: {
+    position: 'relative',
+    marginRight: 16,
+  },
+  avatarPickerImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#E5E7EB',
   },
-  avatarPreviewText: {
-    flex: 1,
-  },
-  previewTitle: {
-    color: '#1A1A1A',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 4,
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#002D5B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
   },
   optionGrid: {
     flexDirection: 'row',
