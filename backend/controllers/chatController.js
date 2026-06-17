@@ -119,7 +119,7 @@ const saveMessage = async (conversationId, senderId, text, type = 'text', imageU
       updateData[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
     }
   });
-  await convRef.update(updateData);
+  await convRef.set(updateData, { merge: true });
 
   return {
     messageId: msgDoc.id,

@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
 import { io } from 'socket.io-client';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
@@ -115,14 +116,32 @@ export const broadcastText = (conversationId, senderId, text, messageId, timesta
   }
 };
 
-// Upload a document to Cloudinary and return its URL
+// Upload a document to Cloudinary and return its URL.
+// Images go to image/upload (renders correctly). Everything else (PDF, DOCX, etc.)
+// goes to raw/upload which preserves the original bytes — image/upload corrupts PDFs
+// by storing a rasterized rendition instead of the original file.
+// Base64 read is required because RN fetch FormData does not reliably send
+// DocumentPicker URIs as binary (results in 0-byte uploads).
 export const uploadDocument = async (localUri, fileName, mimeType) => {
+  const resourceType = mimeType?.startsWith('image/') ? 'image' : 'raw';
+
   const formData = new FormData();
-  formData.append('file', { uri: localUri, type: mimeType || 'application/octet-stream', name: fileName });
+  if (resourceType === 'image') {
+    // Images: base64 data URI is reliable for image/upload
+    const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: 'base64' });
+    formData.append('file', `data:${mimeType || 'image/jpeg'};base64,${base64}`);
+  } else {
+    // Non-image files: use the file URI directly so Cloudinary stores opaque bytes.
+    // Sending as a base64 data URI causes Cloudinary to inspect ZIP magic bytes in
+    // DOCX/XLSX files, extract internal paths like "word/document.xml", and reject
+    // with "Display name cannot contain slashes".
+    formData.append('file', { uri: localUri, type: 'application/octet-stream', name: 'upload' });
+  }
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
+
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
     { method: 'POST', body: formData }
   );
   const result = await response.json();
@@ -130,6 +149,7 @@ export const uploadDocument = async (localUri, fileName, mimeType) => {
     console.error('Cloudinary document upload error:', result);
     throw new Error(result.error?.message || 'Upload failed');
   }
+  console.log('Cloudinary doc upload OK:', result.resource_type, result.format, result.bytes, result.secure_url);
   return result.secure_url;
 };
 

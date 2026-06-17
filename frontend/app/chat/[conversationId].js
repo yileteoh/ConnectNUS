@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as WebBrowser from 'expo-web-browser';
+import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
@@ -385,7 +386,26 @@ export default function ChatRoomScreen() {
           ) : item.type === 'document' && item.documentUrl ? (
             <TouchableOpacity
               style={styles.documentCard}
-              onPress={() => WebBrowser.openBrowserAsync(item.documentUrl)}
+              onPress={async () => {
+                try {
+                  if (item.documentUrl.includes('/image/upload/')) {
+                    // Image files have correct content-type and extension — open inline
+                    WebBrowser.openBrowserAsync(item.documentUrl);
+                  } else {
+                    // Raw files (PDF, DOCX, etc.) — download to cache with the correct
+                    // filename so the OS knows the file type, then share via native sheet
+                    const fileName = item.documentName || 'document';
+                    const localUri = FileSystem.cacheDirectory + fileName;
+                    setUploading(true);
+                    const { uri } = await FileSystem.downloadAsync(item.documentUrl, localUri);
+                    setUploading(false);
+                    await Sharing.shareAsync(uri, { dialogTitle: fileName });
+                  }
+                } catch (e) {
+                  setUploading(false);
+                  Alert.alert('Error', 'Failed to open document.');
+                }
+              }}
               activeOpacity={0.75}
             >
               <View style={[styles.docTypeBox, { backgroundColor: getDocTypeColor(item.documentName) }]}>
@@ -686,7 +706,7 @@ const styles = StyleSheet.create({
   timeOwn: { color: '#BFD0E8', textAlign: 'right' },
   timeOther: { color: '#999', textAlign: 'left' },
   imageMessage: { width: 200, height: 200, borderRadius: 10 },
-  documentCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, maxWidth: 240 },
+  documentCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, width: 210 },
   docTypeBox: { width: 44, height: 44, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 10, flexShrink: 0 },
   docTypeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.5 },
   docInfo: { flex: 1 },
