@@ -7,6 +7,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
 import { doc, onSnapshot, collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import {
@@ -58,6 +60,8 @@ export default function ChatRoomScreen() {
   const [uploading, setUploading] = useState(false);
   const [otherUserStatus, setOtherUserStatus] = useState({ isOnline: false, lastSeen: null });
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState(null);
+  const [savingImage, setSavingImage] = useState(false);
   const flatListRef = useRef(null);
 
   // Insert date-separator objects between messages from different days
@@ -195,6 +199,26 @@ export default function ChatRoomScreen() {
     }
   };
 
+  const handleSaveImage = async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Photo library access is required to save images.');
+        return;
+      }
+      setSavingImage(true);
+      const localUri = FileSystem.cacheDirectory + `connectnus_${Date.now()}.jpg`;
+      await FileSystem.downloadAsync(previewImageUrl, localUri);
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      Alert.alert('Saved', 'Image saved to your photo library.');
+    } catch (error) {
+      console.error('Save image error:', error);
+      Alert.alert('Error', 'Failed to save image. Please try again.');
+    } finally {
+      setSavingImage(false);
+    }
+  };
+
   const renderItem = ({ item }) => {
     // Date separator row
     if (item._separatorId) {
@@ -214,12 +238,14 @@ export default function ChatRoomScreen() {
         <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther,
           item.type === 'image' && item.imageUrl ? styles.bubbleImage : null]}>
           {item.type === 'image' && item.imageUrl ? (
-            <Image
-              source={{ uri: item.imageUrl }}
-              style={styles.imageMessage}
-              resizeMode="cover"
-              onError={(e) => console.error('Image failed to load:', e.nativeEvent.error, 'URL:', item.imageUrl)}
-            />
+            <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewImageUrl(item.imageUrl)}>
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.imageMessage}
+                resizeMode="cover"
+                onError={(e) => console.error('Image failed to load:', e.nativeEvent.error, 'URL:', item.imageUrl)}
+              />
+            </TouchableOpacity>
           ) : (
             <Text style={[styles.bubbleText, isOwn ? styles.textOwn : styles.textOther]}>
               {item.text}
@@ -292,6 +318,34 @@ export default function ChatRoomScreen() {
           }
         />
       )}
+
+      {/* Full-screen image preview modal */}
+      <Modal
+        visible={!!previewImageUrl}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImageUrl(null)}
+      >
+        <View style={styles.imagePreviewOverlay}>
+          <TouchableOpacity style={styles.imagePreviewClose} onPress={() => setPreviewImageUrl(null)}>
+            <Ionicons name="close" size={28} color="#FFF" />
+          </TouchableOpacity>
+          {previewImageUrl && (
+            <Image
+              source={{ uri: previewImageUrl }}
+              style={styles.imagePreviewFull}
+              resizeMode="contain"
+            />
+          )}
+          <TouchableOpacity style={styles.imagePreviewSave} onPress={handleSaveImage} disabled={savingImage}>
+            {savingImage
+              ? <ActivityIndicator size="small" color="#FFF" />
+              : <Ionicons name="download-outline" size={22} color="#FFF" />
+            }
+            <Text style={styles.imagePreviewSaveText}>{savingImage ? 'Saving...' : 'Save to Gallery'}</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
 
       {/* Attachment menu modal */}
       <Modal visible={showAttachMenu} transparent animationType="none" onRequestClose={() => setShowAttachMenu(false)}>
@@ -395,6 +449,13 @@ const styles = StyleSheet.create({
   attachOption: { alignItems: 'center' },
   attachIcon: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   attachLabel: { fontSize: 13, color: '#333', fontWeight: '500' },
+
+  // Full-screen image preview
+  imagePreviewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  imagePreviewClose: { position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 8 },
+  imagePreviewFull: { width: '100%', height: '80%' },
+  imagePreviewSave: { position: 'absolute', bottom: 48, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 24, gap: 8 },
+  imagePreviewSaveText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
 
   // Input bar
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 8, paddingVertical: 8, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#EAEAEA' },
