@@ -63,6 +63,8 @@ export default function ChatRoomScreen() {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const [savingImage, setSavingImage] = useState(false);
+  const [expandedMessages, setExpandedMessages] = useState(new Set());
+  const [longMessages, setLongMessages] = useState(new Set());
   const [replyingTo, setReplyingTo] = useState(null);
   const [actionMenu, setActionMenu] = useState(null); // { item, pageY }
   const flatListRef = useRef(null);
@@ -271,6 +273,8 @@ export default function ChatRoomScreen() {
 
     // Regular message bubble
     const isOwn = item.senderId === currentUserId;
+    const isLong = longMessages.has(item.messageId);
+    const isExpanded = expandedMessages.has(item.messageId);
     return (
       <View style={[styles.messageRow, isOwn ? styles.rowOwn : styles.rowOther]}>
         <Pressable
@@ -299,9 +303,37 @@ export default function ChatRoomScreen() {
               />
             </TouchableOpacity>
           ) : (
-            <Text style={[styles.bubbleText, isOwn ? styles.textOwn : styles.textOther]}>
-              {item.text}
-            </Text>
+            <>
+              <Text
+                style={[styles.bubbleText, isOwn ? styles.textOwn : styles.textOther]}
+                numberOfLines={isExpanded ? undefined : 5}
+                onTextLayout={(e) => {
+                  if (!isExpanded && !longMessages.has(item.messageId)) {
+                    const rendered = e.nativeEvent.lines.reduce((s, l) => s + l.text.length, 0);
+                    if (item.text && rendered < item.text.trimEnd().length) {
+                      setLongMessages((prev) => new Set([...prev, item.messageId]));
+                    }
+                  }
+                }}
+              >
+                {item.text}
+              </Text>
+              {isLong && (
+                <TouchableOpacity
+                  onPress={() => setExpandedMessages((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(item.messageId)) next.delete(item.messageId);
+                    else next.add(item.messageId);
+                    return next;
+                  })}
+                  style={styles.showMoreButton}
+                >
+                  <Text style={isOwn ? styles.showMoreOwn : styles.showMoreOther}>
+                    {isExpanded ? 'Show less' : 'Show more'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
           <Text style={[styles.bubbleTime, isOwn ? styles.timeOwn : styles.timeOther]}>
             {formatMessageTime(item.timestamp)}
@@ -542,6 +574,9 @@ const styles = StyleSheet.create({
   timeOwn: { color: '#BFD0E8', textAlign: 'right' },
   timeOther: { color: '#999', textAlign: 'left' },
   imageMessage: { width: 200, height: 200, borderRadius: 10 },
+  showMoreButton: { marginTop: 4 },
+  showMoreOwn: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
+  showMoreOther: { fontSize: 13, fontWeight: '600', color: '#002D5B' },
 
   // Date separator
   dateSeparatorRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 14, paddingHorizontal: 8 },
