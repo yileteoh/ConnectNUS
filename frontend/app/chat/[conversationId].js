@@ -2,18 +2,19 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable,
   SafeAreaView, Image, Platform, StatusBar, TextInput,
-  KeyboardAvoidingView, ActivityIndicator, Alert, Modal,
+  KeyboardAvoidingView, ActivityIndicator, Alert, Modal, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
-import { doc, onSnapshot, collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import * as Clipboard from 'expo-clipboard';
+import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import {
   getMessages, connectSocket, joinRoom,
-  sendSocketMessage, broadcastImage, onMessage, disconnectSocket, uploadImage,
+  sendSocketMessage, broadcastImage, broadcastText, onMessage, disconnectSocket, uploadImage,
 } from '../../services/chatService';
 
 const formatMessageTime = (timestamp) => {
@@ -62,6 +63,8 @@ export default function ChatRoomScreen() {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const [savingImage, setSavingImage] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [actionMenu, setActionMenu] = useState(null); // { item, pageY }
   const flatListRef = useRef(null);
 
   // Insert date-separator objects between messages from different days
@@ -130,19 +133,37 @@ export default function ChatRoomScreen() {
     }
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = inputText.trim();
     if (!text) return;
     setInputText('');
-    // Add locally for instant feedback; skip our own socket echo in onMessage
-    setMessages((prev) => [...prev, {
-      messageId: `local_${Date.now()}`,
-      senderId: currentUserId,
-      text,
-      type: 'text',
-      timestamp: Date.now(),
-    }]);
-    sendSocketMessage(conversationId, currentUserId, text, 'text', null);
+    const replyTo = replyingTo
+      ? { messageId: replyingTo.messageId, senderId: replyingTo.senderId, text: replyingTo.text || '', type: replyingTo.type || 'text' }
+      : null;
+    setReplyingTo(null);
+    const timestamp = Date.now();
+
+    if (replyTo) {
+      // Reply message: write directly to Firestore so replyTo is always persisted
+      try {
+        const msgRef = await addDoc(
+          collection(db, 'conversations', conversationId, 'messages'),
+          { senderId: currentUserId, text, type: 'text', replyTo, timestamp: serverTimestamp() }
+        );
+        await updateDoc(doc(db, 'conversations', conversationId), {
+          lastMessage: { text, senderId: currentUserId },
+          lastMessageTime: serverTimestamp(),
+        });
+        setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text, type: 'text', replyTo, timestamp }]);
+        broadcastText(conversationId, currentUserId, text, msgRef.id, timestamp, replyTo);
+      } catch (e) {
+        Alert.alert('Error', 'Failed to send message.');
+      }
+    } else {
+      // Regular text: existing socket flow (server saves to Firestore)
+      setMessages((prev) => [...prev, { messageId: `local_${timestamp}`, senderId: currentUserId, text, type: 'text', timestamp }]);
+      sendSocketMessage(conversationId, currentUserId, text, 'text', null, null);
+    }
   };
 
   // Step 1: close the modal synchronously, then schedule the picker after the animation finishes
@@ -170,9 +191,13 @@ export default function ChatRoomScreen() {
       console.log('Image uploaded, URL:', imageUrl);
 
       // Save directly to Firestore — reliable regardless of socket state
+      const imageReplyTo = replyingTo
+        ? { messageId: replyingTo.messageId, senderId: replyingTo.senderId, text: replyingTo.text || '', type: replyingTo.type || 'text' }
+        : null;
+      setReplyingTo(null);
       const msgRef = await addDoc(
         collection(db, 'conversations', conversationId, 'messages'),
-        { senderId: currentUserId, text: '', type: 'image', imageUrl, timestamp: serverTimestamp() }
+        { senderId: currentUserId, text: '', type: 'image', imageUrl, ...(imageReplyTo && { replyTo: imageReplyTo }), timestamp: serverTimestamp() }
       );
       await updateDoc(doc(db, 'conversations', conversationId), {
         lastMessage: { text: '📷 Photo', senderId: currentUserId },
@@ -196,6 +221,19 @@ export default function ChatRoomScreen() {
       Alert.alert('Error', 'Failed to send image. Please try again.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleLongPress = (item, event) => {
+    setActionMenu({ item, pageY: event.nativeEvent.pageY });
+  };
+
+  const handleDeleteMessage = async (item) => {
+    try {
+      await deleteDoc(doc(db, 'conversations', conversationId, 'messages', item.messageId));
+      setMessages((prev) => prev.filter((m) => m.messageId !== item.messageId));
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete message.');
     }
   };
 
@@ -235,8 +273,22 @@ export default function ChatRoomScreen() {
     const isOwn = item.senderId === currentUserId;
     return (
       <View style={[styles.messageRow, isOwn ? styles.rowOwn : styles.rowOther]}>
-        <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther,
-          item.type === 'image' && item.imageUrl ? styles.bubbleImage : null]}>
+        <Pressable
+          style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther,
+            item.type === 'image' && item.imageUrl ? styles.bubbleImage : null]}
+          onLongPress={(e) => handleLongPress(item, e)}
+          delayLongPress={350}
+        >
+          {item.replyTo && (
+            <View style={[styles.replyQuote, isOwn ? styles.replyQuoteOwn : styles.replyQuoteOther]}>
+              <Text style={styles.replyQuoteName}>
+                {item.replyTo.senderId === currentUserId ? 'You' : (name || 'User')}
+              </Text>
+              <Text style={isOwn ? styles.replyQuoteTextOwn : styles.replyQuoteTextOther} numberOfLines={1}>
+                {item.replyTo.type === 'image' ? '📷 Photo' : item.replyTo.text}
+              </Text>
+            </View>
+          )}
           {item.type === 'image' && item.imageUrl ? (
             <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewImageUrl(item.imageUrl)}>
               <Image
@@ -254,7 +306,7 @@ export default function ChatRoomScreen() {
           <Text style={[styles.bubbleTime, isOwn ? styles.timeOwn : styles.timeOther]}>
             {formatMessageTime(item.timestamp)}
           </Text>
-        </View>
+        </Pressable>
       </View>
     );
   };
@@ -347,6 +399,46 @@ export default function ChatRoomScreen() {
         </View>
       </Modal>
 
+      {/* Floating long-press action menu */}
+      <Modal visible={!!actionMenu} transparent animationType="fade" onRequestClose={() => setActionMenu(null)}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => setActionMenu(null)} />
+        {actionMenu && (() => {
+          const { item, pageY } = actionMenu;
+          const screenH = Dimensions.get('window').height;
+          const isOwn = item.senderId === currentUserId;
+          const canDelete = isOwn && item.messageId && !item.messageId.startsWith('local_');
+          const rowCount = (item.type === 'text' && item.text ? 1 : 0) + 1 + (canDelete ? 1 : 0);
+          const menuH = rowCount * 52;
+          const top = pageY > screenH / 2 ? pageY - menuH - 12 : pageY + 12;
+          return (
+            <View style={[styles.actionMenuCard, { top }]}>
+              {item.text ? (
+                <TouchableOpacity style={styles.actionMenuRow} onPress={() => { Clipboard.setStringAsync(item.text); setActionMenu(null); }}>
+                  <Ionicons name="copy-outline" size={18} color="#333" />
+                  <Text style={styles.actionMenuLabel}>Copy</Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity style={styles.actionMenuRow} onPress={() => { setReplyingTo(item); setActionMenu(null); }}>
+                <Ionicons name="return-up-back-outline" size={18} color="#333" />
+                <Text style={styles.actionMenuLabel}>Reply</Text>
+              </TouchableOpacity>
+              {canDelete ? (
+                <TouchableOpacity style={[styles.actionMenuRow, styles.actionMenuRowLast]} onPress={() => {
+                  setActionMenu(null);
+                  Alert.alert('Delete message', 'This will remove the message for everyone.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: () => handleDeleteMessage(item) },
+                  ]);
+                }}>
+                  <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+                  <Text style={[styles.actionMenuLabel, { color: '#FF3B30' }]}>Delete</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          );
+        })()}
+      </Modal>
+
       {/* Attachment menu modal */}
       <Modal visible={showAttachMenu} transparent animationType="none" onRequestClose={() => setShowAttachMenu(false)}>
         <View style={styles.modalOverlay}>
@@ -367,6 +459,23 @@ export default function ChatRoomScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Reply preview bar */}
+      {replyingTo && (
+        <View style={styles.replyBar}>
+          <View style={styles.replyBarContent}>
+            <Text style={styles.replyBarName}>
+              {replyingTo.senderId === currentUserId ? 'You' : (name || 'User')}
+            </Text>
+            <Text style={styles.replyBarText} numberOfLines={1}>
+              {replyingTo.type === 'image' ? '📷 Photo' : replyingTo.text}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => setReplyingTo(null)} style={styles.replyBarClose}>
+            <Ionicons name="close" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Input bar */}
       <KeyboardAvoidingView
@@ -449,6 +558,27 @@ const styles = StyleSheet.create({
   attachOption: { alignItems: 'center' },
   attachIcon: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   attachLabel: { fontSize: 13, color: '#333', fontWeight: '500' },
+
+  // Floating action menu (long press)
+  actionMenuCard: { position: 'absolute', left: 24, right: 24, backgroundColor: '#FFF', borderRadius: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 10, overflow: 'hidden' },
+  actionMenuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 15, gap: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#EBEBEB' },
+  actionMenuRowLast: { borderBottomWidth: 0 },
+  actionMenuLabel: { fontSize: 15, color: '#222', fontWeight: '500' },
+
+  // Reply quote inside bubble
+  replyQuote: { borderRadius: 6, padding: 6, marginBottom: 6, borderLeftWidth: 3 },
+  replyQuoteOwn: { backgroundColor: 'rgba(255,255,255,0.15)', borderLeftColor: 'rgba(255,255,255,0.6)' },
+  replyQuoteOther: { backgroundColor: 'rgba(0,45,91,0.08)', borderLeftColor: '#002D5B' },
+  replyQuoteName: { fontSize: 11, fontWeight: '700', color: '#F28C28', marginBottom: 2 },
+  replyQuoteTextOwn: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
+  replyQuoteTextOther: { fontSize: 12, color: '#555' },
+
+  // Reply bar above input
+  replyBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F4FF', borderTopWidth: 1, borderTopColor: '#D0D8F0', paddingHorizontal: 14, paddingVertical: 8 },
+  replyBarContent: { flex: 1 },
+  replyBarName: { fontSize: 12, fontWeight: '700', color: '#002D5B', marginBottom: 2 },
+  replyBarText: { fontSize: 13, color: '#555' },
+  replyBarClose: { padding: 4, marginLeft: 8 },
 
   // Full-screen image preview
   imagePreviewOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },

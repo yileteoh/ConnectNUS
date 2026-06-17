@@ -66,9 +66,9 @@ export const joinRoom = (conversationId) => {
 };
 
 // Send a text or image message through the socket
-export const sendSocketMessage = (conversationId, senderId, text, type = 'text', imageUrl = null) => {
+export const sendSocketMessage = (conversationId, senderId, text, type = 'text', imageUrl = null, replyTo = null) => {
   if (socket) {
-    socket.emit('send_message', { conversationId, senderId, text, type, imageUrl });
+    socket.emit('send_message', { conversationId, senderId, text, type, imageUrl, replyTo });
   }
 };
 
@@ -104,6 +104,14 @@ export const onMessage = (callback) => {
 export const broadcastImage = (conversationId, senderId, imageUrl, messageId, timestamp) => {
   if (socket) {
     socket.emit('broadcast_image', { conversationId, senderId, imageUrl, messageId, timestamp });
+  }
+};
+
+// Broadcast a reply-text message to other room members — no server-side Firestore save
+// (the client saves directly to Firestore before calling this)
+export const broadcastText = (conversationId, senderId, text, messageId, timestamp, replyTo) => {
+  if (socket) {
+    socket.emit('broadcast_text', { conversationId, senderId, text, messageId, timestamp, replyTo });
   }
 };
 

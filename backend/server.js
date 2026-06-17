@@ -21,9 +21,9 @@ io.on('connection', (socket) => {
     socket.join(conversationId);
   });
 
-  socket.on('send_message', async ({ conversationId, senderId, text, type, imageUrl }) => {
+  socket.on('send_message', async ({ conversationId, senderId, text, type, imageUrl, replyTo }) => {
     try {
-      const msg = await saveMessage(conversationId, senderId, text, type, imageUrl);
+      const msg = await saveMessage(conversationId, senderId, text, type, imageUrl, replyTo);
       io.to(conversationId).emit('receive_message', msg);
     } catch (err) {
       socket.emit('error', { message: 'Failed to send message' });
@@ -39,6 +39,19 @@ io.on('connection', (socket) => {
       text: '',
       type: 'image',
       imageUrl,
+      timestamp,
+    });
+  });
+
+  // Reply-text messages are saved to Firestore by the client directly.
+  // This event only broadcasts to other room members.
+  socket.on('broadcast_text', ({ conversationId, senderId, text, messageId, timestamp, replyTo }) => {
+    socket.to(conversationId).emit('receive_message', {
+      messageId,
+      senderId,
+      text,
+      type: 'text',
+      replyTo,
       timestamp,
     });
   });
