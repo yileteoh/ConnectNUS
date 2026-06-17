@@ -227,20 +227,33 @@ const createGroupConversation = async (eventId, eventTitle, creatorId, creatorIn
   });
 };
 
+const saveSystemMessage = async (conversationId, text) => {
+  await db.collection('conversations').doc(conversationId).collection('messages').add({
+    type: 'system',
+    text,
+    senderId: null,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
+};
+
 const addUserToGroupConversation = async (eventId, userId, userInfo) => {
   const convRef = db.collection('conversations').doc(`event_${eventId}`);
   await convRef.update({
     participants: admin.firestore.FieldValue.arrayUnion(userId),
     [`participantInfo.${userId}`]: { name: userInfo.name || 'User', profilePicUrl: userInfo.profilePicUrl || '' },
   });
+  await saveSystemMessage(`event_${eventId}`, `${userInfo.name || 'User'} joined the group`);
 };
 
 const removeUserFromGroupConversation = async (eventId, userId) => {
   const convRef = db.collection('conversations').doc(`event_${eventId}`);
+  const convDoc = await convRef.get();
+  const userName = convDoc.data()?.participantInfo?.[userId]?.name || 'User';
   await convRef.update({
     participants: admin.firestore.FieldValue.arrayRemove(userId),
     [`participantInfo.${userId}`]: admin.firestore.FieldValue.delete(),
   });
+  await saveSystemMessage(`event_${eventId}`, `${userName} left the group`);
 };
 
 const deleteGroupConversation = async (eventId) => {

@@ -440,6 +440,15 @@ export default function ChatRoomScreen() {
       );
     }
 
+    // System message (e.g. "John joined the group")
+    if (item.type === 'system') {
+      return (
+        <View style={styles.systemMsgRow}>
+          <Text style={styles.systemMsgText}>{item.text}</Text>
+        </View>
+      );
+    }
+
     // Regular message bubble
     const isOwn = item.senderId === currentUserId;
     const isLong = longMessages.has(item.messageId);
@@ -878,6 +887,8 @@ const styles = StyleSheet.create({
   dateSeparatorRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 14, paddingHorizontal: 8 },
   dateSeparatorLine: { flex: 1, height: 1, backgroundColor: '#D0D0D0' },
   dateSeparatorText: { fontSize: 12, color: '#888', marginHorizontal: 10, fontWeight: '500' },
+  systemMsgRow: { alignItems: 'center', marginVertical: 6, paddingHorizontal: 24 },
+  systemMsgText: { fontSize: 12, color: '#888', backgroundColor: '#EFEFEF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, overflow: 'hidden', textAlign: 'center' },
 
   // Empty state
   emptyState: { alignItems: 'center', marginTop: 80 },
