@@ -162,4 +162,49 @@ const setUnreadForParticipants = async (conversationId, senderId) => {
   } catch (e) {}
 };
 
-module.exports = { getOrCreateConversation, getConversations, getMessages, saveMessage, markAsRead, setUnreadForParticipants };
+// ── Group chat helpers (called by eventController, not exposed as routes) ──────
+
+const createGroupConversation = async (eventId, eventTitle, creatorId, creatorInfo) => {
+  const convRef = db.collection('conversations').doc(`event_${eventId}`);
+  const convDoc = await convRef.get();
+  if (convDoc.exists) return;
+  await convRef.set({
+    type: 'group',
+    eventId,
+    eventTitle,
+    participants: [creatorId],
+    participantInfo: {
+      [creatorId]: { name: creatorInfo.name || 'User', profilePicUrl: creatorInfo.profilePicUrl || '' },
+    },
+    lastMessage: null,
+    lastMessageTime: null,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+};
+
+const addUserToGroupConversation = async (eventId, userId, userInfo) => {
+  const convRef = db.collection('conversations').doc(`event_${eventId}`);
+  await convRef.update({
+    participants: admin.firestore.FieldValue.arrayUnion(userId),
+    [`participantInfo.${userId}`]: { name: userInfo.name || 'User', profilePicUrl: userInfo.profilePicUrl || '' },
+  });
+};
+
+const removeUserFromGroupConversation = async (eventId, userId) => {
+  const convRef = db.collection('conversations').doc(`event_${eventId}`);
+  await convRef.update({
+    participants: admin.firestore.FieldValue.arrayRemove(userId),
+    [`participantInfo.${userId}`]: admin.firestore.FieldValue.delete(),
+  });
+};
+
+const deleteGroupConversation = async (eventId) => {
+  await db.collection('conversations').doc(`event_${eventId}`).delete();
+};
+
+module.exports = {
+  getOrCreateConversation, getConversations, getMessages, saveMessage,
+  markAsRead, setUnreadForParticipants,
+  createGroupConversation, addUserToGroupConversation,
+  removeUserFromGroupConversation, deleteGroupConversation,
+};

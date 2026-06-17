@@ -1,4 +1,8 @@
 const { admin, db } = require('../config/firebase');
+const {
+  createGroupConversation, addUserToGroupConversation,
+  removeUserFromGroupConversation, deleteGroupConversation,
+} = require('./chatController');
 
 // Create a new event/study group post
 exports.createEvent = async (req, res) => {
@@ -29,6 +33,15 @@ exports.createEvent = async (req, res) => {
 
     // Add the new event to the 'events' collection
     const eventRef = await db.collection('events').add(eventData);
+
+    // Create a group chat room tied to this event; creator is auto-added
+    try {
+      const creatorDoc = await db.collection('users').doc(creatorId).get();
+      const creatorData = creatorDoc.exists ? creatorDoc.data() : {};
+      await createGroupConversation(eventRef.id, eventData.title, creatorId, {
+        name: creatorData.name, profilePicUrl: creatorData.profilePicUrl,
+      });
+    } catch (e) { console.error('createGroupConversation failed:', e); }
 
     return res.status(201).json({
       status: 'success',
@@ -174,6 +187,15 @@ exports.joinEvent = async (req, res) => {
       });
     });
 
+    // Add the joiner to the event's group chat
+    try {
+      const userDoc = await db.collection('users').doc(userId).get();
+      const userData = userDoc.exists ? userDoc.data() : {};
+      await addUserToGroupConversation(eventId, userId, {
+        name: userData.name, profilePicUrl: userData.profilePicUrl,
+      });
+    } catch (e) { console.error('addUserToGroupConversation failed:', e); }
+
     return res.status(200).json({ status: 'success', message: 'Successfully joined!' });
   } catch (error) {
     return res.status(400).json({ status: 'error', message: error.message });
@@ -210,6 +232,11 @@ exports.leaveEvent = async (req, res) => {
       });
     });
 
+    // Remove the user from the event's group chat
+    try {
+      await removeUserFromGroupConversation(eventId, userId);
+    } catch (e) { console.error('removeUserFromGroupConversation failed:', e); }
+
     return res.status(200).json({ status: 'success', message: 'Successfully removed from gathering.' });
   } catch (error) {
     return res.status(400).json({ status: 'error', message: error.message });
@@ -236,6 +263,12 @@ exports.deleteEvent = async (req, res) => {
 
     // Execute absolute document wipeout
     await eventRef.delete();
+
+    // Delete the group chat tied to this event
+    try {
+      await deleteGroupConversation(eventId);
+    } catch (e) { console.error('deleteGroupConversation failed:', e); }
+
     return res.status(200).json({ status: 'success', message: 'Event successfully dissolved.' });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });

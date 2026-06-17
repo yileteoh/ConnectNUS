@@ -13,7 +13,7 @@ import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
-import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimestamp, increment, getDocs, getDoc, query, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, increment, getDocs, getDoc, query, orderBy, limit } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import {
   getMessages, connectSocket, joinRoom,
@@ -77,6 +77,11 @@ export default function ChatRoomScreen() {
   const flatListRef = useRef(null);
   const initialScrollDone = useRef(false);
 
+  const isGroup = conversationId?.startsWith('event_');
+  const eventId = isGroup ? conversationId.replace('event_', '') : null;
+  const [participantInfo, setParticipantInfo] = useState({});
+  const [myAvatar, setMyAvatar] = useState('');
+
   // Insert date-separator objects between messages from different days
   const flatListData = useMemo(() => {
     const result = [];
@@ -92,7 +97,16 @@ export default function ChatRoomScreen() {
     return result;
   }, [messages]);
 
-  // Listen to the other user's profile + online status in real time
+  // Load own avatar (shown on the right side of own messages in group chats)
+  useEffect(() => {
+    if (!currentUserId) return;
+    const unsub = onSnapshot(doc(db, 'users', currentUserId), (snap) => {
+      if (snap.exists() && snap.data().profilePicUrl) setMyAvatar(snap.data().profilePicUrl);
+    });
+    return unsub;
+  }, [currentUserId]);
+
+  // Listen to the other user's profile + online status in real time (1-on-1 only)
   useEffect(() => {
     if (!otherId) return;
     const unsubscribe = onSnapshot(doc(db, 'users', otherId), (snap) => {
@@ -112,9 +126,9 @@ export default function ChatRoomScreen() {
   // Reset this conversation's unread count for the current user when the chat room opens
   useEffect(() => {
     if (!currentUserId || !conversationId) return;
-    updateDoc(doc(db, 'conversations', conversationId), {
+    setDoc(doc(db, 'conversations', conversationId), {
       [`unreadCounts.${currentUserId}`]: 0,
-    }).catch(() => {});
+    }, { merge: true }).catch(() => {});
   }, [conversationId, currentUserId]);
 
   // Load message history and connect socket
@@ -125,6 +139,11 @@ export default function ChatRoomScreen() {
       try {
         const history = await getMessages(conversationId);
         setMessages(history);
+        // For group chats, load participant names + avatars from the conversation doc
+        if (isGroup) {
+          const convDoc = await getDoc(doc(db, 'conversations', conversationId));
+          if (convDoc.exists()) setParticipantInfo(convDoc.data().participantInfo || {});
+        }
         setLoading(false);
         connectSocket();
         joinRoom(conversationId);
@@ -189,13 +208,13 @@ export default function ChatRoomScreen() {
           collection(db, 'conversations', conversationId, 'messages'),
           { senderId: currentUserId, text, type: 'text', replyTo, timestamp: serverTimestamp() }
         );
-        await updateDoc(doc(db, 'conversations', conversationId), {
+        await setDoc(doc(db, 'conversations', conversationId), {
           lastMessage: { text, senderId: currentUserId },
           lastMessageTime: serverTimestamp(),
-        });
+        }, { merge: true });
         setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text, type: 'text', replyTo, timestamp }]);
         broadcastText(conversationId, currentUserId, text, msgRef.id, timestamp, replyTo);
-        if (otherId) updateDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }).catch(() => {});
+        if (otherId) setDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }, { merge: true }).catch(() => {});
       } catch (e) {
         Alert.alert('Error', 'Failed to send message.');
       }
@@ -203,7 +222,7 @@ export default function ChatRoomScreen() {
       // Regular text: existing socket flow (server saves to Firestore)
       setMessages((prev) => [...prev, { messageId: `local_${timestamp}`, senderId: currentUserId, text, type: 'text', timestamp }]);
       sendSocketMessage(conversationId, currentUserId, text, 'text', null, null);
-      if (otherId) updateDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }).catch(() => {});
+      if (otherId) setDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }, { merge: true }).catch(() => {});
     }
   };
 
@@ -240,10 +259,10 @@ export default function ChatRoomScreen() {
         collection(db, 'conversations', conversationId, 'messages'),
         { senderId: currentUserId, text: '', type: 'image', imageUrl, ...(imageReplyTo && { replyTo: imageReplyTo }), timestamp: serverTimestamp() }
       );
-      await updateDoc(doc(db, 'conversations', conversationId), {
+      await setDoc(doc(db, 'conversations', conversationId), {
         lastMessage: { text: '📷 Photo', senderId: currentUserId },
         lastMessageTime: serverTimestamp(),
-      });
+      }, { merge: true });
 
       const timestamp = Date.now();
       // Add to local state with the real Firestore messageId
@@ -257,7 +276,7 @@ export default function ChatRoomScreen() {
       }]);
       // Broadcast to the other user via socket (server does NOT save to Firestore again)
       broadcastImage(conversationId, currentUserId, imageUrl, msgRef.id, timestamp);
-      if (otherId) updateDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }).catch(() => {});
+      if (otherId) setDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }, { merge: true }).catch(() => {});
     } catch (error) {
       console.error('Image upload error:', error?.code, error?.message, error);
       Alert.alert('Error', 'Failed to send image. Please try again.');
@@ -286,14 +305,14 @@ export default function ChatRoomScreen() {
         collection(db, 'conversations', conversationId, 'messages'),
         { senderId: currentUserId, text: '', type: 'document', documentUrl, documentName: asset.name, ...(docReplyTo && { replyTo: docReplyTo }), timestamp: serverTimestamp() }
       );
-      await updateDoc(doc(db, 'conversations', conversationId), {
+      await setDoc(doc(db, 'conversations', conversationId), {
         lastMessage: { text: `📄 ${asset.name}`, senderId: currentUserId },
         lastMessageTime: serverTimestamp(),
-      });
+      }, { merge: true });
       const timestamp = Date.now();
       setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text: '', type: 'document', documentUrl, documentName: asset.name, timestamp }]);
       broadcastDocument(conversationId, currentUserId, documentUrl, asset.name, msgRef.id, timestamp);
-      if (otherId) updateDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }).catch(() => {});
+      if (otherId) setDoc(doc(db, 'conversations', conversationId), { [`unreadCounts.${otherId}`]: increment(1) }, { merge: true }).catch(() => {});
     } catch (error) {
       Alert.alert('Error', `Failed to send document: ${error?.message || 'Unknown error'}`);
     } finally {
@@ -317,16 +336,16 @@ export default function ChatRoomScreen() {
         query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'desc'), limit(1))
       );
       if (snap.empty) {
-        await updateDoc(convRef, { lastMessage: null, lastMessageTime: null });
+        await setDoc(convRef, { lastMessage: null, lastMessageTime: null }, { merge: true });
       } else {
         const d = snap.docs[0].data();
         const preview = d.type === 'image' ? '📷 Photo'
           : d.type === 'document' ? `📄 ${d.documentName || 'Document'}`
           : (d.text || '');
-        await updateDoc(convRef, {
+        await setDoc(convRef, {
           lastMessage: { text: preview, senderId: d.senderId },
           lastMessageTime: d.timestamp,
-        });
+        }, { merge: true });
       }
 
       // If own message deleted, decrement the recipient's unread count (floor 0)
@@ -334,7 +353,7 @@ export default function ChatRoomScreen() {
         const convSnap = await getDoc(convRef);
         const theirUnread = convSnap.data()?.unreadCounts?.[otherId] || 0;
         if (theirUnread > 0) {
-          await updateDoc(convRef, { [`unreadCounts.${otherId}`]: increment(-1) });
+          await setDoc(convRef, { [`unreadCounts.${otherId}`]: increment(-1) }, { merge: true });
         }
       }
     } catch (error) {
@@ -404,18 +423,29 @@ export default function ChatRoomScreen() {
     const isOwn = item.senderId === currentUserId;
     const isLong = longMessages.has(item.messageId);
     const isExpanded = expandedMessages.has(item.messageId);
-    return (
-      <View style={[styles.messageRow, isOwn ? styles.rowOwn : styles.rowOther]}>
-        <Pressable
-          style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther,
-            item.type === 'image' && item.imageUrl ? styles.bubbleImage : null]}
-          onLongPress={(e) => handleLongPress(item, e)}
-          delayLongPress={350}
-        >
+
+    // Group chat: resolve sender info for other participants
+    const senderInfo = isGroup && !isOwn ? (participantInfo[item.senderId] || {}) : {};
+    const senderName = senderInfo.name || 'User';
+    const senderAvatar = senderInfo.profilePicUrl;
+
+    const renderAvatar = (uri) => uri
+      ? <Image source={{ uri }} style={styles.groupMsgAvatar} />
+      : <Image source={require('../../assets/profile_image.jpg')} style={styles.groupMsgAvatar} />;
+
+    const bubble = (
+      <Pressable
+        style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther,
+          item.type === 'image' && item.imageUrl ? styles.bubbleImage : null]}
+        onLongPress={(e) => handleLongPress(item, e)}
+        delayLongPress={350}
+      >
           {item.replyTo && (
             <View style={[styles.replyQuote, isOwn ? styles.replyQuoteOwn : styles.replyQuoteOther]}>
               <Text style={styles.replyQuoteName}>
-                {item.replyTo.senderId === currentUserId ? 'You' : (name || 'User')}
+                {item.replyTo.senderId === currentUserId ? 'You'
+                  : isGroup ? (participantInfo[item.replyTo.senderId]?.name || 'User')
+                  : (name || 'User')}
               </Text>
               <Text style={isOwn ? styles.replyQuoteTextOwn : styles.replyQuoteTextOther} numberOfLines={1}>
                 {item.replyTo.type === 'image' ? '📷 Photo' : item.replyTo.type === 'document' ? '📄 Document' : item.replyTo.text}
@@ -513,6 +543,22 @@ export default function ChatRoomScreen() {
             {formatMessageTime(item.timestamp)}
           </Text>
         </Pressable>
+    );
+
+    return (
+      <View style={[styles.messageRow, isOwn ? styles.rowOwn : styles.rowOther]}>
+        {isGroup && !isOwn && (
+          <View style={styles.groupMsgAvatarWrap}>{renderAvatar(senderAvatar)}</View>
+        )}
+        {isGroup ? (
+          <View style={[styles.bubbleCol, isOwn ? styles.bubbleColOwn : styles.bubbleColOther]}>
+            {!isOwn && <Text style={styles.groupSenderName}>{senderName}</Text>}
+            {bubble}
+          </View>
+        ) : bubble}
+        {isGroup && isOwn && (
+          <View style={styles.groupMsgAvatarWrap}>{renderAvatar(myAvatar)}</View>
+        )}
       </View>
     );
   };
@@ -522,7 +568,7 @@ export default function ChatRoomScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
 
-      {/* WhatsApp-style header */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
@@ -530,30 +576,40 @@ export default function ChatRoomScreen() {
 
         <TouchableOpacity
           style={styles.headerCenter}
-          onPress={() => otherId && router.push(`/user/${otherId}`)}
+          onPress={() => isGroup ? router.push(`/event-details/${eventId}`) : otherId && router.push(`/user/${otherId}`)}
           activeOpacity={0.7}
         >
-          {displayAvatar ? (
+          {isGroup ? (
+            <View style={styles.groupHeaderIcon}>
+              <Ionicons name="people" size={20} color="#FFF" />
+            </View>
+          ) : displayAvatar ? (
             <Image source={{ uri: displayAvatar }} style={styles.headerAvatar} />
           ) : (
             <Image source={require('../../assets/profile_image.jpg')} style={styles.headerAvatar} />
           )}
-          <View>
-            <Text style={styles.headerName} numberOfLines={1}>{displayName || 'Chat'}</Text>
-            <Text style={[styles.headerStatus, statusText === 'Active now' && styles.headerStatusOnline]}>
-              {statusText}
-            </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerName} numberOfLines={1}>{displayName || 'Group Chat'}</Text>
+            {isGroup ? (
+              <Text style={styles.headerStatus}>Tap to view event</Text>
+            ) : (
+              <Text style={[styles.headerStatus, statusText === 'Active now' && styles.headerStatusOnline]}>
+                {statusText}
+              </Text>
+            )}
           </View>
         </TouchableOpacity>
 
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Voice calls will be available in a future update.')} style={styles.headerIcon}>
-            <Ionicons name="call-outline" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Video calls will be available in a future update.')} style={styles.headerIcon}>
-            <Ionicons name="videocam-outline" size={22} color="#FFF" />
-          </TouchableOpacity>
-        </View>
+        {!isGroup && (
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Voice calls will be available in a future update.')} style={styles.headerIcon}>
+              <Ionicons name="call-outline" size={22} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Video calls will be available in a future update.')} style={styles.headerIcon}>
+              <Ionicons name="videocam-outline" size={22} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Message list — FlatList is always mounted once data loads so the ref is
@@ -687,7 +743,9 @@ export default function ChatRoomScreen() {
         <View style={styles.replyBar}>
           <View style={styles.replyBarContent}>
             <Text style={styles.replyBarName}>
-              {replyingTo.senderId === currentUserId ? 'You' : (name || 'User')}
+              {replyingTo.senderId === currentUserId ? 'You'
+                : isGroup ? (participantInfo[replyingTo.senderId]?.name || 'User')
+                : (name || 'User')}
             </Text>
             <Text style={styles.replyBarText} numberOfLines={1}>
               {replyingTo.type === 'image' ? '📷 Photo' : replyingTo.type === 'document' ? '📄 Document' : replyingTo.text}
@@ -742,11 +800,20 @@ const styles = StyleSheet.create({
   backButton: { marginRight: 6 },
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   headerAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  groupHeaderIcon: { width: 40, height: 40, borderRadius: 20, marginRight: 10, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   headerName: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
   headerStatus: { fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 1 },
   headerStatusOnline: { color: '#4CD964' },
   headerActions: { flexDirection: 'row' },
   headerIcon: { marginLeft: 16 },
+
+  // Group chat message avatars
+  groupMsgAvatarWrap: { width: 32, height: 32, marginHorizontal: 6, alignSelf: 'flex-end' },
+  groupMsgAvatar: { width: 32, height: 32, borderRadius: 16 },
+  groupSenderName: { fontSize: 11, fontWeight: '700', color: '#F28C28', marginBottom: 2, marginLeft: 2 },
+  bubbleCol: { flex: 1 },
+  bubbleColOwn: { alignItems: 'flex-end' },
+  bubbleColOther: { alignItems: 'flex-start' },
 
   // Messages
   messageList: { paddingHorizontal: 12, paddingVertical: 12, paddingBottom: 20 },

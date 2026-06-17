@@ -269,31 +269,49 @@ export default function EventDetailsScreen() {
       {/* Floating Bottom Action Bar */}
       <View style={styles.bottomBar}>
         {isCreator ? (
-          /* State A: User is the master room manager */
-          <TouchableOpacity 
-            style={[styles.joinButton, styles.hostButton]}
-            onPress={() => router.push(`/edit-event/${id}`)}
-            disabled={actionLoading}
-          >
-            <Ionicons name="create-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.joinButtonText}>Edit Event Details</Text>
-          </TouchableOpacity>
+          /* State A: Creator — Group Chat + Edit side by side */
+          <View style={styles.bottomBarRow}>
+            <TouchableOpacity
+              style={[styles.joinButton, styles.chatButton, { flex: 1 }]}
+              onPress={() => router.push(`/chat/event_${id}?name=${encodeURIComponent(event.title)}`)}
+            >
+              <Ionicons name="chatbubbles-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.joinButtonText}>Group Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.joinButton, styles.hostButton, { flex: 1 }]}
+              onPress={() => router.push(`/edit-event/${id}`)}
+              disabled={actionLoading}
+            >
+              <Ionicons name="create-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.joinButtonText}>Edit Event</Text>
+            </TouchableOpacity>
+          </View>
         ) : hasJoined ? (
-          /* State B: User is an active attendee who can decide to opt-out */
-          <TouchableOpacity 
-            style={[styles.joinButton, styles.leaveButton]} 
-            onPress={handleLeave}
-            disabled={actionLoading}
-          >
-            {actionLoading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Ionicons name="exit-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                <Text style={styles.joinButtonText}>Leave Event</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          /* State B: Attendee — Group Chat + Leave side by side */
+          <View style={styles.bottomBarRow}>
+            <TouchableOpacity
+              style={[styles.joinButton, styles.chatButton, { flex: 1 }]}
+              onPress={() => router.push(`/chat/event_${id}?name=${encodeURIComponent(event.title)}`)}
+            >
+              <Ionicons name="chatbubbles-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.joinButtonText}>Group Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.joinButton, styles.leaveButton, { flex: 1 }]}
+              onPress={handleLeave}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="exit-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.joinButtonText}>Leave Event</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         ) : isFull ? (
           /* State C: Event slots are totally occupied */
           <View style={[styles.joinButton, styles.fullButton]}>
@@ -301,8 +319,8 @@ export default function EventDetailsScreen() {
           </View>
         ) : (
           /* State D: Space is open, standard RSVP gate entry point */
-          <TouchableOpacity 
-            style={styles.joinButton} 
+          <TouchableOpacity
+            style={styles.joinButton}
             onPress={handleJoin}
             disabled={actionLoading}
           >
@@ -372,9 +390,11 @@ const styles = StyleSheet.create({
     resizeMode: 'cover'
   },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 15, borderTopWidth: 1, borderColor: '#EAEAEA', paddingBottom: Platform.OS === 'ios' ? 30 : 15 },
+  bottomBarRow: { flexDirection: 'row', gap: 10 },
   joinButton: { backgroundColor: '#F28C28', flexDirection: 'row', borderRadius: 10, paddingVertical: 16, justifyContent: 'center', alignItems: 'center' },
-  fullButton: { backgroundColor: '#CCCCCC' }, 
-  hostButton: { backgroundColor: '#002D5B' }, 
-  leaveButton: { backgroundColor: '#D32F2F' }, 
+  fullButton: { backgroundColor: '#CCCCCC' },
+  hostButton: { backgroundColor: '#002D5B' },
+  leaveButton: { backgroundColor: '#D32F2F' },
+  chatButton: { backgroundColor: '#0288D1' },
   joinButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
 });
