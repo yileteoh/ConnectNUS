@@ -20,11 +20,15 @@ const formatMessageTime = (timestamp) => {
 };
 
 const formatLastSeen = (isOnline, lastSeen) => {
-  if (isOnline) return 'Active now';
-  if (!lastSeen) return 'Offline';
-  const ms = lastSeen?.toMillis ? lastSeen.toMillis() : lastSeen;
+  const ms = lastSeen?.toMillis ? lastSeen.toMillis() : (lastSeen || 0);
   const diff = Date.now() - ms;
   const minutes = Math.floor(diff / 60000);
+
+  // Treat isOnline as stale if lastSeen hasn't been refreshed within 5 min
+  // (heartbeat pings every 2 min, so >5 min means the app was killed/backgrounded)
+  if (isOnline && diff < 5 * 60 * 1000) return 'Active now';
+
+  if (!ms) return 'Offline';
   if (minutes < 1) return 'Last seen just now';
   if (minutes < 60) return `Last seen ${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
@@ -252,7 +256,7 @@ export default function ChatRoomScreen() {
           )}
           <View>
             <Text style={styles.headerName} numberOfLines={1}>{name || 'Chat'}</Text>
-            <Text style={[styles.headerStatus, otherUserStatus.isOnline && styles.headerStatusOnline]}>
+            <Text style={[styles.headerStatus, statusText === 'Active now' && styles.headerStatusOnline]}>
               {statusText}
             </Text>
           </View>
@@ -354,8 +358,8 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   headerAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   headerName: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
-  headerStatus: { fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
-  headerStatusOnline: { color: '#90EE90' },
+  headerStatus: { fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 1 },
+  headerStatusOnline: { color: '#4CD964' },
   headerActions: { flexDirection: 'row' },
   headerIcon: { marginLeft: 16 },
 

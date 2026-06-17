@@ -23,9 +23,12 @@ export default function RootLayout() {
 
   // Track online/offline status in Firestore so other users see "Active now" or "Last seen X"
   useEffect(() => {
+    if (!user) return;
+
+    // Capture uid now — auth.currentUser will be null by the time the cleanup runs on logout
+    const uid = user.uid;
+
     const setOnlineStatus = async (isOnline) => {
-      const uid = auth.currentUser?.uid;
-      if (!uid) return;
       try {
         await updateDoc(doc(db, 'users', uid), {
           isOnline,
@@ -34,16 +37,17 @@ export default function RootLayout() {
       } catch (e) {}
     };
 
-    if (user) {
-      setOnlineStatus(true);
-      const subscription = AppState.addEventListener('change', (state) => {
-        setOnlineStatus(state === 'active');
-      });
-      return () => {
-        setOnlineStatus(false);
-        subscription.remove();
-      };
-    }
+    setOnlineStatus(true);
+    // Heartbeat: refresh lastSeen every 2 min so staleness checks stay accurate
+    const pingInterval = setInterval(() => setOnlineStatus(true), 2 * 60 * 1000);
+    const subscription = AppState.addEventListener('change', (state) => {
+      setOnlineStatus(state === 'active');
+    });
+    return () => {
+      clearInterval(pingInterval);
+      setOnlineStatus(false);
+      subscription.remove();
+    };
   }, [user]);
 
   useEffect(() => {
