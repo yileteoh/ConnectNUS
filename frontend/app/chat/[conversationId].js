@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable,
   SafeAreaView, Image, Platform, StatusBar, TextInput,
-  KeyboardAvoidingView, ActivityIndicator, Alert, Modal, Dimensions,
+  KeyboardAvoidingView, ActivityIndicator, Alert, Modal, Dimensions, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -259,6 +259,21 @@ export default function ChatRoomScreen() {
     }
   };
 
+  const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+  const isURL = (s) => /^(https?:\/\/|www\.)/i.test(s);
+  const renderText = (text, textStyle, linkStyle) => {
+    const parts = text.split(URL_REGEX);
+    return parts.map((part, i) => {
+      if (!isURL(part)) return <Text key={i} style={textStyle}>{part}</Text>;
+      const href = part.startsWith('http') ? part : `https://${part}`;
+      return (
+        <Text key={i} style={linkStyle} onPress={() => Linking.openURL(href)}>
+          {part}
+        </Text>
+      );
+    });
+  };
+
   const renderItem = ({ item }) => {
     // Date separator row
     if (item._separatorId) {
@@ -316,7 +331,11 @@ export default function ChatRoomScreen() {
                   }
                 }}
               >
-                {item.text}
+                {renderText(
+                  item.text,
+                  isOwn ? styles.textOwn : styles.textOther,
+                  isOwn ? styles.linkOwn : styles.linkOther,
+                )}
               </Text>
               {isLong && (
                 <TouchableOpacity
@@ -577,6 +596,8 @@ const styles = StyleSheet.create({
   showMoreButton: { marginTop: 4 },
   showMoreOwn: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
   showMoreOther: { fontSize: 13, fontWeight: '600', color: '#002D5B' },
+  linkOwn: { color: 'rgba(255,255,255,0.9)', textDecorationLine: 'underline' },
+  linkOther: { color: '#1a5fb4', textDecorationLine: 'underline' },
 
   // Date separator
   dateSeparatorRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 14, paddingHorizontal: 8 },
