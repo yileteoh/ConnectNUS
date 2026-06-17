@@ -1,9 +1,10 @@
 // frontend/app/_layout.js
 import React, { useEffect, useState, createContext } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { ActivityIndicator, View } from 'react-native';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { ActivityIndicator, View, AppState } from 'react-native';
 import {
   getCachedProfileSetupComplete,
   getUserProfile,
@@ -19,6 +20,31 @@ export default function RootLayout() {
   const [user, setUser] = useState(null);
   const router = useRouter();
   const segments = useSegments(); // Tracks current routing position
+
+  // Track online/offline status in Firestore so other users see "Active now" or "Last seen X"
+  useEffect(() => {
+    const setOnlineStatus = async (isOnline) => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      try {
+        await updateDoc(doc(db, 'users', uid), {
+          isOnline,
+          lastSeen: serverTimestamp(),
+        });
+      } catch (e) {}
+    };
+
+    if (user) {
+      setOnlineStatus(true);
+      const subscription = AppState.addEventListener('change', (state) => {
+        setOnlineStatus(state === 'active');
+      });
+      return () => {
+        setOnlineStatus(false);
+        subscription.remove();
+      };
+    }
+  }, [user]);
 
   useEffect(() => {
     // Subscriber to listen to Firebase Authentication state changes

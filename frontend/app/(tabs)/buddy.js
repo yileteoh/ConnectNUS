@@ -129,7 +129,7 @@ export default function BuddyScreen() {
               style={styles.chatButton}
               onPress={async () => {
                 const conv = await getOrCreateConversation(currentUserId, exclusiveBuddy.id);
-                router.push(`/chat/${conv.conversationId}?name=${encodeURIComponent(exclusiveBuddy.name)}`);
+                router.push(`/chat/${conv.conversationId}?name=${encodeURIComponent(exclusiveBuddy.name)}&otherId=${exclusiveBuddy.id}&avatar=${encodeURIComponent(exclusiveBuddy.profilePicUrl || '')}`);
               }}
             >
               <Ionicons name="chatbubbles" size={20} color="#FFF" />
