@@ -13,7 +13,7 @@ import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Clipboard from 'expo-clipboard';
-import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimestamp, increment } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, serverTimestamp, increment, getDocs, getDoc, query, orderBy, limit } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 import {
   getMessages, connectSocket, joinRoom,
@@ -62,6 +62,7 @@ export default function ChatRoomScreen() {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [scrollReady, setScrollReady] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [otherUserStatus, setOtherUserStatus] = useState({ isOnline: false, lastSeen: null });
   const [displayName, setDisplayName] = useState(name ? decodeURIComponent(name) : '');
@@ -74,6 +75,7 @@ export default function ChatRoomScreen() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [actionMenu, setActionMenu] = useState(null); // { item, pageY }
   const flatListRef = useRef(null);
+  const initialScrollDone = useRef(false);
 
   // Insert date-separator objects between messages from different days
   const flatListData = useMemo(() => {
@@ -145,9 +147,27 @@ export default function ChatRoomScreen() {
     };
   }, [conversationId]);
 
-  // Auto-scroll to bottom when new message arrives
+  // Initial scroll: keep showing the spinner until FlatList has measured all items
+  // and scrolled to the bottom, then reveal the list already at the correct position.
   useEffect(() => {
-    if (messages.length > 0) {
+    if (!loading) {
+      if (messages.length === 0) {
+        setScrollReady(true);
+        initialScrollDone.current = true;
+      } else {
+        const t = setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: false });
+          initialScrollDone.current = true;
+          setScrollReady(true);
+        }, 400);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [loading]);
+
+  // Subsequent messages: smooth scroll after initial load is done
+  useEffect(() => {
+    if (initialScrollDone.current && messages.length > 0) {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [messages]);
@@ -289,6 +309,34 @@ export default function ChatRoomScreen() {
     try {
       await deleteDoc(doc(db, 'conversations', conversationId, 'messages', item.messageId));
       setMessages((prev) => prev.filter((m) => m.messageId !== item.messageId));
+
+      const convRef = doc(db, 'conversations', conversationId);
+
+      // Refresh lastMessage on the conversation so the inbox preview stays accurate
+      const snap = await getDocs(
+        query(collection(db, 'conversations', conversationId, 'messages'), orderBy('timestamp', 'desc'), limit(1))
+      );
+      if (snap.empty) {
+        await updateDoc(convRef, { lastMessage: null, lastMessageTime: null });
+      } else {
+        const d = snap.docs[0].data();
+        const preview = d.type === 'image' ? '📷 Photo'
+          : d.type === 'document' ? `📄 ${d.documentName || 'Document'}`
+          : (d.text || '');
+        await updateDoc(convRef, {
+          lastMessage: { text: preview, senderId: d.senderId },
+          lastMessageTime: d.timestamp,
+        });
+      }
+
+      // If own message deleted, decrement the recipient's unread count (floor 0)
+      if (item.senderId === currentUserId && otherId) {
+        const convSnap = await getDoc(convRef);
+        const theirUnread = convSnap.data()?.unreadCounts?.[otherId] || 0;
+        if (theirUnread > 0) {
+          await updateDoc(convRef, { [`unreadCounts.${otherId}`]: increment(-1) });
+        }
+      }
     } catch (error) {
       Alert.alert('Error', 'Failed to delete message.');
     }
@@ -508,25 +556,35 @@ export default function ChatRoomScreen() {
         </View>
       </View>
 
-      {/* Message list */}
+      {/* Message list — FlatList is always mounted once data loads so the ref is
+          valid when scrollToEnd fires. Opacity hides it until the initial scroll
+          is done; the spinner overlays on top during that brief window. */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#002D5B" />
         </View>
       ) : (
-        <FlatList
-          ref={flatListRef}
-          data={flatListData}
-          keyExtractor={(item) => item._separatorId || item.messageId}
-          renderItem={renderItem}
-          contentContainerStyle={styles.messageList}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No messages yet. Say hi! 👋</Text>
+        <View style={{ flex: 1 }}>
+          <FlatList
+            ref={flatListRef}
+            data={flatListData}
+            keyExtractor={(item) => item._separatorId || item.messageId}
+            renderItem={renderItem}
+            contentContainerStyle={styles.messageList}
+            showsVerticalScrollIndicator={false}
+            style={{ opacity: scrollReady ? 1 : 0 }}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No messages yet. Say hi! 👋</Text>
+              </View>
+            }
+          />
+          {!scrollReady && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#002D5B" />
             </View>
-          }
-        />
+          )}
+        </View>
       )}
 
       {/* Full-screen image preview modal */}
