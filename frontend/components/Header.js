@@ -4,9 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
+import { useRouter } from 'expo-router';
 
 export default function Header({ showSettings, onSettingsPress, onNotificationPress }) {
   const [hasUnread, setHasUnread] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     let unsubSnap = () => {};
@@ -14,16 +16,24 @@ export default function Header({ showSettings, onSettingsPress, onNotificationPr
       unsubSnap();
       if (!user) return;
       const uid = user.uid;
-      unsubSnap = onSnapshot(
-        query(collection(db, 'conversations'), where('participants', 'array-contains', uid)),
-        (snap) => {
-          const any = snap.docs.some((d) => (d.data().unreadCounts?.[uid] || 0) > 0);
-          setHasUnread(any);
-        }
+
+      const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', uid),
+        where('isRead', '==', false) 
       );
+
+      unsubSnap = onSnapshot(q, (snap) => {
+        setHasUnread(!snap.empty);
+      });
     });
+    
     return () => { unsubAuth(); unsubSnap(); };
   }, []);
+
+  const handleNotificationPress = () => {
+    router.push('/notifications');
+  };
 
   return (
     <View style={styles.headerContainer}>
@@ -39,7 +49,7 @@ export default function Header({ showSettings, onSettingsPress, onNotificationPr
             <Ionicons name="settings-outline" size={28} color="#002D5B" />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity onPress={onNotificationPress} style={styles.bellWrapper}>
+          <TouchableOpacity onPress={handleNotificationPress} style={styles.bellWrapper}>
             <Ionicons name="notifications-outline" size={28} color="#002D5B" />
             {hasUnread && <View style={styles.badge} />}
           </TouchableOpacity>
@@ -77,13 +87,11 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 12,
-    height: 12,
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
     borderRadius: 6,
-    backgroundColor: '#E53935',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    backgroundColor: '#E53935'
   },
 });

@@ -11,6 +11,8 @@ import {
   getForumDetails, getPostComments, addComment, togglePostLike, 
   deleteForumPost, updateComment, deleteComment, toggleCommentLike
 } from '../../services/forumService';
+import { sendNotification } from '../../services/notificationHelper';
+import { getUserProfile } from '../../services/profileService';
 
 const getRelativeTime = (timeData) => {
   if (!timeData) return 'Just now';
@@ -115,6 +117,17 @@ export default function ForumDetailsScreen() {
     try {
       // 4. Send to backend in the background
       await addComment(id, currentUserId, textToSend);
+      if (post && post.creatorId !== currentUserId) {
+        const myProfile = await getUserProfile(currentUserId);
+        const realName = myProfile?.name || 'A student';
+        sendNotification(
+          post.creatorId,
+          'New Comment',
+          `${realName} commented on your thread: "${post.title}"`,
+          'forum',
+          id
+        );
+      }
       
       // 5. Once successful, silently fetch the real list to get actual IDs
       const freshComments = await getPostComments(id);
@@ -141,6 +154,11 @@ export default function ForumDetailsScreen() {
   const handleToggleCommentLike = async (commentId) => {
     if (!currentUserId) return;
 
+    const targetComment = comments.find(c => c.id === commentId);
+    if (!targetComment) return;
+
+    const hasLiked = targetComment.likes?.includes(currentUserId);
+
     // Optimistically update the UI instantly
     setComments(currentComments => currentComments.map(comment => {
       if (comment.id === commentId) {
@@ -156,6 +174,24 @@ export default function ForumDetailsScreen() {
 
     try {
       await toggleCommentLike(id, commentId, currentUserId);
+      // Notify the comment author about the new like
+      if (!hasLiked && targetComment.userId !== currentUserId) {
+        const myProfile = await getUserProfile(currentUserId);
+        const realName = myProfile?.name || 'A student';
+
+        // Truncate the comment text if it's too long for the notification body
+        const snippet = targetComment.text.length > 30 
+          ? targetComment.text.substring(0, 30) + '...' 
+          : targetComment.text;
+
+        sendNotification(
+          targetComment.userId, // The author of the comment
+          'Comment Liked', // Title
+          `${realName} liked your comment: "${snippet}"`, // Body
+          'forum', // Type
+          id // Reference ID
+        );
+      }
     } catch (error) {
       // Silently revert if the server request fails
       setComments(await getPostComments(id));

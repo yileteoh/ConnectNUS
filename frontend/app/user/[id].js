@@ -10,6 +10,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getUserProfile } from '../../services/profileService';
 import { checkBuddyStatus, sendBuddyRequest, acceptBuddyRequest, removeBuddy, declineBuddyRequest } from '../../services/buddyService';
 import { auth } from '../../firebaseConfig';
+import { sendNotification } from '../../services/notificationHelper';
 
 export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams(); 
@@ -57,6 +58,16 @@ export default function PublicProfileScreen() {
         setRequestId(result.requestId); 
       }
       setRelationStatus('pending_sent');
+      // Notify the target user that they received a request
+      const myProfile = await getUserProfile(currentUserId);
+      const realName = myProfile?.name || 'A student';
+      await sendNotification(
+        id, // receiver (the person we are viewing)
+        'New Buddy Request', // title
+        `${realName} wants to be your buddy! Tap to view their profile.`, // body
+        'buddy', // type
+        currentUserId // referenceId
+      );
       Alert.alert('Success!', 'Buddy request has been sent.');
     } catch (error) {
       Alert.alert('Error', error.message || 'Cannot send request.');
@@ -71,6 +82,16 @@ export default function PublicProfileScreen() {
     try {
       await acceptBuddyRequest(requestId, id, currentUserId);
       setRelationStatus('buddies');
+      // Notify the sender that their request was accepted!
+      const myProfile = await getUserProfile(currentUserId);
+      const realName = myProfile?.name || 'A student';
+      await sendNotification(
+        id, // receiver
+        'Buddy Request Accepted!', // title
+        `You and ${realName} are now buddies! Say hi!`, // body
+        'buddy', // type
+        currentUserId // referenceId
+      );
       Alert.alert('Matched!', `You and ${profile?.name} are now buddies!`);
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -87,6 +108,16 @@ export default function PublicProfileScreen() {
           try {
             await declineBuddyRequest(requestId);
             setRelationStatus('none');
+            // Notify the sender that their request was declined.
+            const myProfile = await getUserProfile(currentUserId);
+            const realName = myProfile?.name || 'A student';
+            await sendNotification(
+              id, // receiver
+              'Buddy Request Update', // title
+              `${realName} politely declined your buddy request.`, // body
+              'buddy', // type
+              currentUserId // referenceId
+            );
           } catch (error) {
             Alert.alert('Error', error.message);
           } finally {
@@ -117,6 +148,15 @@ export default function PublicProfileScreen() {
           try {
             await removeBuddy(currentUserId, id);
             setRelationStatus('none');
+            const myProfile = await getUserProfile(currentUserId);
+            const realName = myProfile?.name || 'A student';
+            await sendNotification(
+              id, // receiver
+              'Buddy Removed', // title
+              `${realName} has removed you as their buddy.`, // body
+              'buddy', // type
+              currentUserId // referenceId
+            );
             Alert.alert('Removed', 'Partnership dissolved.');
           } catch (error) {
             Alert.alert('Error', error.message);

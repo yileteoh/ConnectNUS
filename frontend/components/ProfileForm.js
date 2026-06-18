@@ -428,7 +428,7 @@ export default function ProfileForm({
                   }
                 </View>
               </TouchableOpacity>
-              <Text style={styles.helperText}>
+              <Text style={[styles.helperText, { flex: 1, flexWrap: 'wrap' }]}>
                 Tap the photo to upload from your library.{'\n'}Default avatar is used if none is set.
               </Text>
             </View>

@@ -10,6 +10,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { auth } from '../../firebaseConfig';
 import { getEventDetails, updateEvent } from '../../services/eventService';
 import { EVENT_CATEGORIES } from '../../constants/eventOptions';
+import { sendNotification } from '../../services/notificationHelper';
 
 export default function EditEventScreen() {
   const { id } = useLocalSearchParams(); // Auto catch dynamic event tracking ID from URL route
@@ -25,6 +26,9 @@ export default function EditEventScreen() {
   const [location, setLocation] = useState('');
   const [capacity, setCapacity] = useState('');
   const [description, setDescription] = useState('');
+
+  // Attendees list
+  const [attendees, setAttendees] = useState([]);
 
   // DateTime Wheel Controller states
   const [date, setDate] = useState(new Date());
@@ -51,6 +55,7 @@ export default function EditEventScreen() {
         setLocation(data.location);
         setCapacity(String(data.capacity));
         setDescription(data.description || '');
+        setAttendees(data.attendees || []);
 
         if (data.time) {
           const parsedDate = new Date(data.time);
@@ -117,6 +122,20 @@ export default function EditEventScreen() {
 
       // Dispatch data package stream to update API endpoint
       await updateEvent(id, currentUserId, adjustmentPayload);
+
+      // Notify all attendees about the update
+      attendees.forEach(attendee => {
+        const targetId = typeof attendee === 'object' ? attendee.uid : attendee;
+        if (targetId && targetId !== currentUserId) {
+          sendNotification(
+            targetId, // The person receiving the notification
+            'Event Updated', // Title
+            `The event "${title.trim()}" has been modified by the host. Check the new details!`, // Body
+            'event', // Type (determines the icon and navigation)
+            id // Reference ID (so tapping it goes to the event details)
+          );
+        }
+      });
 
       Alert.alert('Updated Successfully!', 'Your changes have been saved.', [
         { text: 'OK', onPress: () => router.replace(`/event-details/${id}`) }

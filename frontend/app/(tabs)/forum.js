@@ -10,6 +10,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { fetchGlobalForums, togglePostLike } from '../../services/forumService';
+import { sendNotification } from '../../services/notificationHelper';
+import { getUserProfile } from '../../services/profileService';
 
 const FORUM_TABS = ['All Topics', 'Study', 'Campus', 'Romance', 'Job', 'Others'];
 
@@ -87,6 +89,12 @@ export default function ForumScreen() {
   const handleToggleLike = async (postId) => {
     if (!currentUserId) return;
 
+    // Find the specific post to get the creator's ID and current like status
+    const targetPost = forums.find(p => p.id === postId);
+    if (!targetPost) return;
+    
+    const hasLiked = targetPost.likes?.includes(currentUserId);
+
     // Optimistically update local state
     setForums(currentPosts => currentPosts.map(post => {
       if (post.id === postId) {
@@ -101,6 +109,19 @@ export default function ForumScreen() {
 
     try {
       await togglePostLike(postId, currentUserId);
+      if (!hasLiked && targetPost.creatorId !== currentUserId) {
+        // Fetch the current user's profile to get their name
+        const myProfile = await getUserProfile(currentUserId);
+        const realName = myProfile?.name || 'A student';
+        
+        await sendNotification(
+          targetPost.creatorId, // receiver
+          'New Like', // title
+          `${realName} liked your discussion: "${targetPost.title}"`, // body
+          'forum', // type
+          postId // referenceId
+        );
+      }
     } catch (error) {
       // Revert if API fails
       loadForums(activeCategory); 
