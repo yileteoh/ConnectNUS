@@ -502,12 +502,20 @@ export default function ChatRoomScreen() {
                   } else {
                     // Raw files (PDF, DOCX, etc.) — download to cache with the correct
                     // filename so the OS knows the file type, then share via native sheet
-                    const fileName = item.documentName || 'document';
-                    const localUri = FileSystem.cacheDirectory + fileName;
                     setUploading(true);
+
+                    const safeFileName = (item.documentName || 'document').replace(/[^a-zA-Z0-9.]/g, '_');
+
+                    const localUri = FileSystem.documentDirectory + safeFileName;
+
                     const { uri } = await FileSystem.downloadAsync(item.documentUrl, localUri);
                     setUploading(false);
-                    await Sharing.shareAsync(uri, { dialogTitle: fileName });
+                    
+                    if (await Sharing.isAvailableAsync()) {
+                      await Sharing.shareAsync(uri, { dialogTitle: item.documentName });
+                    } else {
+                      Alert.alert('Error', 'Your device does not support file sharing/opening.');
+                    }
                   }
                 } catch (e) {
                   setUploading(false);
@@ -536,15 +544,7 @@ export default function ChatRoomScreen() {
             <>
               <Text
                 style={[styles.bubbleText, isOwn ? styles.textOwn : styles.textOther]}
-                numberOfLines={isExpanded ? undefined : 5}
-                onTextLayout={(e) => {
-                  if (!isExpanded && !longMessages.has(item.messageId)) {
-                    const rendered = e.nativeEvent.lines.reduce((s, l) => s + l.text.length, 0);
-                    if (item.text && rendered < item.text.trimEnd().length) {
-                      setLongMessages((prev) => new Set([...prev, item.messageId]));
-                    }
-                  }
-                }}
+                numberOfLines={(!item.text || (item.text.length <= 200 && (item.text.match(/\n/g) || []).length <= 4)) || isExpanded ? undefined : 5}
               >
                 {renderText(
                   item.text,
@@ -552,7 +552,7 @@ export default function ChatRoomScreen() {
                   isOwn ? styles.linkOwn : styles.linkOther,
                 )}
               </Text>
-              {isLong && (
+              {item.text && (item.text.length > 200 || (item.text.match(/\n/g) || []).length > 4) && (
                 <TouchableOpacity
                   onPress={() => setExpandedMessages((prev) => {
                     const next = new Set(prev);
@@ -636,16 +636,6 @@ export default function ChatRoomScreen() {
           </View>
         </TouchableOpacity>
 
-        {!isGroup && (
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Voice calls will be available in a future update.')} style={styles.headerIcon}>
-              <Ionicons name="call-outline" size={22} color="#FFF" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Video calls will be available in a future update.')} style={styles.headerIcon}>
-              <Ionicons name="videocam-outline" size={22} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
       {/* Message list — FlatList is always mounted once data loads so the ref is

@@ -107,7 +107,11 @@ export const uploadImage = async (localUri) => {
 export const onMessage = (callback) => {
   if (socket) {
     socket.on('receive_message', callback);
-    return () => socket.off('receive_message', callback);
+    return () => {
+      if (socket) {
+        socket.off('receive_message', callback);
+      }
+    };
   }
   return () => {};
 };

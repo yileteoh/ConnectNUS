@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import Header from '../../components/Header';
 import { auth, db } from '../../firebaseConfig';
 
@@ -35,6 +35,17 @@ export default function ChatScreen() {
 
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [myBuddyId, setMyBuddyId] = useState(null);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const unsub = onSnapshot(doc(db, 'users', currentUserId), (snap) => {
+      if (snap.exists()) {
+        setMyBuddyId(snap.data().currentBuddyId || null);
+      }
+    });
+    return unsub;
+  }, [currentUserId]);
 
   // Real-time listener — same query the Header badge already uses, so permissions are confirmed working
   useEffect(() => {
@@ -58,6 +69,21 @@ export default function ChatScreen() {
     });
     return unsub;
   }, [currentUserId]);
+
+  const sortedConversations = [...conversations].sort((a, b) => {
+    const otherIdA = a.participants?.find((id) => id !== currentUserId);
+    const otherIdB = b.participants?.find((id) => id !== currentUserId);
+
+    const aIsBuddy = !a.conversationId?.startsWith('event_') && otherIdA === myBuddyId;
+    const bIsBuddy = !b.conversationId?.startsWith('event_') && otherIdB === myBuddyId;
+
+    if (aIsBuddy && !bIsBuddy) return -1;
+    if (!aIsBuddy && bIsBuddy) return 1;
+
+    const tA = toMs(a.lastMessageTime) ?? -Infinity;
+    const tB = toMs(b.lastMessageTime) ?? -Infinity;
+    return tB - tA;
+  });
 
   const renderConversationCard = ({ item }) => {
     const isGroup = item.type === 'group' || item.conversationId?.startsWith('event_');
@@ -99,9 +125,10 @@ export default function ChatScreen() {
     // 1-on-1 DM
     const otherId = item.participants?.find((id) => id !== currentUserId);
     const otherUser = item.participantInfo?.[otherId] || {};
+    const isBuddy = otherId === myBuddyId;
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.card, isBuddy && styles.buddyCardHighlight]}
         activeOpacity={0.8}
         onPress={() => router.push(
           `/chat/${item.conversationId}?name=${encodeURIComponent(otherUser.name || '')}&otherId=${otherId}&avatar=${encodeURIComponent(otherUser.profilePicUrl || '')}`
@@ -114,7 +141,17 @@ export default function ChatScreen() {
         )}
         <View style={styles.cardBody}>
           <View style={styles.cardTop}>
-            <Text style={[styles.name, unread > 0 && styles.nameBold]}>{otherUser.name || 'User'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+              <Text style={[styles.name, unread > 0 && styles.nameBold]} numberOfLines={1}>
+                {otherUser.name || 'User'}
+              </Text>
+              {isBuddy && (
+                <View style={styles.buddyBadge}>
+                  <Ionicons name="star" size={10} color="#FFF" />
+                  <Text style={styles.buddyBadgeText}>BUDDY</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.time}>{lastTime}</Text>
           </View>
           <View style={styles.cardBottom}>
@@ -140,7 +177,7 @@ export default function ChatScreen() {
         </View>
       ) : (
         <FlatList
-          data={conversations}
+          data={sortedConversations}
           keyExtractor={(item) => item.conversationId}
           renderItem={renderConversationCard}
           contentContainerStyle={conversations.length === 0 ? styles.emptyContainer : styles.listContent}
@@ -165,6 +202,9 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1 },
 
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  buddyCardHighlight: { backgroundColor: '#ffe9bc' },
+  buddyBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F28C28', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 },
+  buddyBadgeText: { color: '#FFF', fontSize: 9, fontWeight: 'bold', marginLeft: 2, letterSpacing: 0.5 },
   avatar: { width: 50, height: 50, borderRadius: 25, borderWidth: 1, borderColor: '#EEE' },
   groupAvatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#0288D1', justifyContent: 'center', alignItems: 'center' },
   cardBody: { flex: 1, marginLeft: 14 },
