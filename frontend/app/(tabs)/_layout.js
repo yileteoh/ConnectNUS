@@ -34,7 +34,7 @@ export default function TabLayout() {
         name="forum" 
         options={{
           title: 'Forum',
-          tabBarIcon: ({ color }) => <Ionicons name="chatbubbles-outline" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="chatbox-ellipses-outline" size={24} color={color} />,
         }} 
       />
       <Tabs.Screen 
@@ -42,6 +42,13 @@ export default function TabLayout() {
         options={{
           title: 'Buddy',
           tabBarIcon: ({ color }) => <Ionicons name="person-add-outline" size={24} color={color} />,
+        }} 
+      />
+      <Tabs.Screen 
+        name="chat" 
+        options={{
+          title: 'Chat',
+          tabBarIcon: ({ color }) => <Ionicons name="chatbubbles-outline" size={24} color={color} />,
         }} 
       />
       <Tabs.Screen 

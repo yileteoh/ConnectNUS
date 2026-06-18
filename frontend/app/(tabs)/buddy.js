@@ -102,8 +102,20 @@ export default function BuddyScreen() {
     return matchesSearch && matchesFaculty;
   });
 
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Header title="Buddy" showSettings={false} />
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#002D5B" />
+          <Text style={{ marginTop: 10, color: '#666', fontSize: 14 }}>Checking buddy status...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Rendered if user already has an active 1-on-1 Buddy
-  if (exclusiveBuddy && !loading) {
+  if (exclusiveBuddy) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Header title="My Buddy" showSettings={false} />
@@ -148,7 +160,7 @@ export default function BuddyScreen() {
     );
   }
 
-if (optedOut && !loading) {
+if (optedOut) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Header title="Find a Buddy" showSettings={false} />
@@ -266,14 +278,6 @@ if (optedOut && !loading) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#002D5B" />}
         ListEmptyComponent={() => {
-          if (loading && !refreshing) {
-            return (
-              <View style={styles.center}>
-                <ActivityIndicator size="large" color="#002D5B" />
-                <Text style={{ marginTop: 10, color: '#666' }}>Scanning network...</Text>
-              </View>
-            );
-          }
           return (
             <View style={styles.emptyState}>
               <Ionicons name="search" size={60} color="#CCC" />
@@ -289,7 +293,7 @@ if (optedOut && !loading) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FAFAFA', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   headerContext: { paddingHorizontal: 15, paddingTop: 10 },
   headerContextTitle: { fontSize: 20, fontWeight: 'bold', color: '#002D5B' },
   headerContextSub: { fontSize: 13, color: '#666', marginTop: 2 },

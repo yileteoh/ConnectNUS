@@ -44,10 +44,14 @@ export default function RegisterScreen() {
 
           Alert.alert(
             "Account Created", 
-            "Your account has been successfully created!"
+            "Your account has been successfully created!",
+            [
+              { 
+                text: "OK", 
+                onPress: () => router.replace('/')
+              }
+            ]
           );
-          
-          router.replace('/');
 
         } catch (error) {
           console.log("Backend Sync Error:", error);

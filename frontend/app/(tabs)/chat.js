@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   unreadBadge: { backgroundColor: '#E53935', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
   unreadBadgeText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
 
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 120, paddingHorizontal: 30 },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
   emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#002D5B', marginTop: 12 },
   emptySub: { fontSize: 14, color: '#666', marginTop: 6, textAlign: 'center', lineHeight: 20 },
 });

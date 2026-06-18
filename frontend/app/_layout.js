@@ -96,7 +96,7 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === 'index' || segments[0] === 'register' || segments.length === 0;
     const inProfileSetup = segments[0] === 'profile-setup';
 
-    if (user && !profileComplete && !inProfileSetup) {
+    if (user && !profileComplete && !inProfileSetup && segments[0] !== 'register') {
       // First login after registration must complete profile setup.
       router.replace('/profile-setup');
     } else if (user && profileComplete && (inAuthGroup || inProfileSetup)) {
