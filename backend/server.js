@@ -4,6 +4,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const routes = require('./routes');
 const { saveMessage, setUnreadForParticipants } = require('./controllers/chatController');
+const { startAllCronJobs } = require('./cronJobs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,5 +80,7 @@ if (require.main === module) {
     console.log(`Server running on port ${PORT}`);
   });
 }
+
+startAllCronJobs();
 
 module.exports = app;
