@@ -1,8 +1,30 @@
 // backend/cronJobs.js
 const cron = require('node-cron');
 const admin = require('firebase-admin');
+const fetch = require('node-fetch');
 
 const db = admin.firestore();
+
+// Sends Push Notification via Expo
+const sendExpoPushNotification = async (expoPushToken, title, body, data) => {
+  const message = {
+    to: expoPushToken,
+    sound: 'default',
+    title: title,
+    body: body,
+    data: data,
+  };
+
+  try {
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message),
+    });
+  } catch (error) {
+    console.error('[CRON] Expo Push Error:', error);
+  }
+};
 
 // Helper function to create a notification document via Admin SDK
 const sendSystemNotification = async (userId, title, body, type, referenceId) => {
@@ -16,6 +38,15 @@ const sendSystemNotification = async (userId, title, body, type, referenceId) =>
       isRead: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    // Fetch user's push token and fire the Push Notification
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+      const pushToken = userDoc.data().pushToken;
+      if (pushToken) {
+        await sendExpoPushNotification(pushToken, title, body, { type, referenceId });
+      }
+    }
   } catch (error) {
     console.error(`[CRON] Failed to send notification to ${userId}:`, error);
   }
