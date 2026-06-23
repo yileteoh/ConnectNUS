@@ -73,14 +73,6 @@ exports.getEvents = async (req, res) => {
       });
     });
 
-    // Automatically hide events that have already passed
-    const currentTimeMs = Date.now();
-    events = events.filter(event => {
-      if (!event.time) return false; // Hide invalid dates
-      const eventTimeMs = new Date(event.time).getTime();
-      return eventTimeMs > currentTimeMs; // Only keep future events
-    });
-
     if (category && category !== 'All Events') {
       events = events.filter(event => event.category === category);
     }

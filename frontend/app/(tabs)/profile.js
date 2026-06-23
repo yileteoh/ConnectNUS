@@ -20,11 +20,19 @@ import { useRouter } from 'expo-router';
 import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { getUserProfile } from '../../services/profileService';
+import { fetchGlobalEvents } from '../../services/eventService';
+
+const formatRelativeTime = (isoString) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pastEvents, setPastEvents] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -36,8 +44,35 @@ export default function ProfileScreen() {
           const userId = auth.currentUser?.uid;
           if (!userId) return;
 
+          // 1. Fetch Profile
           const data = await getUserProfile(userId);
-          if (isActive) setProfile(data);
+          
+          // 2. Fetch Events to find past attended sessions
+          const allEvents = await fetchGlobalEvents();
+          const now = new Date().getTime();
+          
+          const history = allEvents.filter(event => {
+            let eventTime = 0;
+            if (event.time) {
+              if (typeof event.time === 'string' || typeof event.time === 'number') {
+                eventTime = new Date(event.time).getTime();
+              } else if (event.time.seconds) {
+                eventTime = event.time.seconds * 1000;
+              }
+            }
+            if (isNaN(eventTime)) eventTime = 0;
+            const isAttending = (event.creatorId === userId) || (event.attendees?.some(a => a.uid === userId || a === userId));
+            // Event must be in the past AND user must have attended
+            return isAttending && eventTime <= now;
+          });
+
+          // Sort by newest past event first and get top 5
+          history.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+          if (isActive) {
+            setProfile(data);
+            setPastEvents(history.slice(0, 5));
+          }
         } catch (error) {
           console.error('Failed to fetch profile in UI:', error);
         } finally {
@@ -270,16 +305,32 @@ const getPlatformConfig = (url) => {
         </ScrollView>
 
         <Text style={styles.sectionHeading}>Past Sessions</Text>
-        <View style={styles.listCard}>
-          <View style={styles.cardHeaderBetween}>
-            <View style={styles.tagLightBlue}>
-              <Text style={styles.tagTextDark}>{profile.modules?.[0] || 'CS1234S'}</Text>
-            </View>
-            <Text style={styles.timeText}>2 days ago</Text>
+        {pastEvents.length > 0 ? (
+          pastEvents.map((event) => (
+            <TouchableOpacity 
+              key={event.id} 
+              style={styles.listCard}
+              activeOpacity={0.8}
+              onPress={() => router.push(`/event-details/${event.id}`)}
+            >
+              <View style={styles.cardHeaderBetween}>
+                <View style={styles.tagLightBlue}>
+                  <Text style={styles.tagTextDark}>{event.category}</Text>
+                </View>
+                <Text style={styles.timeText}>{formatPastDate(event.time)}</Text>
+              </View>
+              <Text style={styles.listCardTitle}>{event.title}</Text>
+              <Text style={styles.listCardSubtitle}>
+                <Ionicons name="location-outline" size={14} /> {event.location}
+              </Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyPastSessions}>
+             <Ionicons name="time-outline" size={30} color="#CCC" style={{marginBottom: 8}} />
+             <Text style={styles.placeholderText}>You haven't attended any events yet.</Text>
           </View>
-          <Text style={styles.listCardTitle}>Python Crash Course</Text>
-          <Text style={styles.listCardSubtitle}>COM1 12-34</Text>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

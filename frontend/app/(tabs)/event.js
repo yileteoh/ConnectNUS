@@ -80,7 +80,17 @@ export default function EventScreen() {
 
   const filteredEvents = events.filter(event => {
     const query = searchQuery.toLowerCase();
-    return (event.title && event.title.toLowerCase().includes(query));
+    const matchesSearch = event.title && event.title.toLowerCase().includes(query);
+    
+    let eventTime = 0;
+    if (event.time) {
+      eventTime = new Date(event.time).getTime();
+    }
+    if (isNaN(eventTime)) eventTime = 0;
+
+    const isFuture = eventTime > new Date().getTime();
+
+    return matchesSearch && isFuture;
   });
 
   const renderEvent = ({ item: event }) => {

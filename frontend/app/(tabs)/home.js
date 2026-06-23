@@ -18,6 +18,15 @@ import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUserProfile } from '../../services/profileService';
+import { fetchGlobalEvents } from '../../services/eventService';
+
+const formatEventTime = (isoString) => {
+  if (!isoString) return 'Time TBD';
+  const date = new Date(isoString);
+  const formattedDate = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const formattedTime = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `${formattedDate}, ${formattedTime}`;
+};
 
 export default function HomeScreen() {
   const router = useRouter();
