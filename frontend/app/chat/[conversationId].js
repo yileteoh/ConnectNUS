@@ -20,6 +20,7 @@ import {
   sendSocketMessage, broadcastImage, broadcastText, broadcastDocument,
   onMessage, disconnectSocket, uploadImage, uploadDocument, markAsRead,
 } from '../../services/chatService';
+import { sendChatPushNotification } from '../../services/notificationHelper';
 
 const formatMessageTime = (timestamp) => {
   if (!timestamp) return '';
@@ -82,6 +83,7 @@ export default function ChatRoomScreen() {
   const [participantInfo, setParticipantInfo] = useState({});
   const participantInfoRef = useRef({});
   const [myAvatar, setMyAvatar] = useState('');
+  const [myRealName, setMyRealName] = useState('');
 
   // Insert date-separator objects between messages from different days
   const flatListData = useMemo(() => {
@@ -119,6 +121,7 @@ export default function ChatRoomScreen() {
         });
         if (data.name) setDisplayName(data.name);
         if (data.profilePicUrl) setDisplayAvatar(data.profilePicUrl);
+        if (data.name) setMyRealName(data.name);
       }
     });
     return unsubscribe;
@@ -217,6 +220,33 @@ export default function ChatRoomScreen() {
     }
   }, [messages]);
 
+  const triggerChatPush = async (textPreview) => {
+    try {
+      const myName = myRealName || (auth.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Someone');
+      
+      if (otherId) {
+        await sendChatPushNotification(otherId, myName, textPreview, conversationId);
+      } else if (isGroup) {
+        const convSnap = await getDoc(doc(db, 'conversations', conversationId));
+        if (convSnap.exists()) {
+          const parts = convSnap.data().participants || [];
+          parts.forEach(pId => {
+            if (pId !== currentUserId) {
+              sendChatPushNotification(
+                pId, 
+                `${displayName || 'Group Chat'}`,
+                `${myName}: ${textPreview}`,
+                conversationId
+              );
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to trigger chat push:', e);
+    }
+  };
+
   const handleSend = async () => {
     const text = inputText.trim();
     if (!text) return;
@@ -240,6 +270,7 @@ export default function ChatRoomScreen() {
         }, { merge: true });
         setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text, type: 'text', replyTo, timestamp }]);
         broadcastText(conversationId, currentUserId, text, msgRef.id, timestamp, replyTo);
+        triggerChatPush(text);
       } catch (e) {
         Alert.alert('Error', 'Failed to send message.');
       }
@@ -247,6 +278,7 @@ export default function ChatRoomScreen() {
       // Regular text: existing socket flow (server saves to Firestore and increments unread)
       setMessages((prev) => [...prev, { messageId: `local_${timestamp}`, senderId: currentUserId, text, type: 'text', timestamp }]);
       sendSocketMessage(conversationId, currentUserId, text, 'text', null, null);
+      triggerChatPush(text);
     }
   };
 
@@ -299,6 +331,7 @@ export default function ChatRoomScreen() {
       }]);
       // Broadcast to the other user via socket (server does NOT save to Firestore again)
       broadcastImage(conversationId, currentUserId, imageUrl, msgRef.id, timestamp);
+      triggerChatPush('Sent a photo')
     } catch (error) {
       console.error('Image upload error:', error?.code, error?.message, error);
       Alert.alert('Error', 'Failed to send image. Please try again.');
@@ -334,6 +367,7 @@ export default function ChatRoomScreen() {
       const timestamp = Date.now();
       setMessages((prev) => [...prev, { messageId: msgRef.id, senderId: currentUserId, text: '', type: 'document', documentUrl, documentName: asset.name, timestamp }]);
       broadcastDocument(conversationId, currentUserId, documentUrl, asset.name, msgRef.id, timestamp);
+      triggerChatPush('Sent a document');
     } catch (error) {
       Alert.alert('Error', `Failed to send document: ${error?.message || 'Unknown error'}`);
     } finally {

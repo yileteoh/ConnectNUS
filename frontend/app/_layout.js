@@ -10,6 +10,7 @@ import {
   getUserProfile,
   setCachedProfileSetupComplete,
 } from '../services/profileService';
+import { registerForPushNotificationsAsync } from '../services/notificationHelper';
 
 // Create a global AuthContext to share the profile setup state across screens
 export const AuthContext = createContext();
@@ -28,21 +29,36 @@ export default function RootLayout() {
     // Capture uid now — auth.currentUser will be null by the time the cleanup runs on logout
     const uid = user.uid;
 
-    const setOnlineStatus = async (isOnline) => {
+const initializeUserSession = async () => {
       try {
         await updateDoc(doc(db, 'users', uid), {
-          isOnline,
+          isOnline: true,
           lastSeen: serverTimestamp(),
         });
-      } catch (e) {}
+
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          await updateDoc(doc(db, 'users', uid), { pushToken: token });
+        }
+      } catch (e) {
+        console.log("Failed to initialize user session:", e);
+      }
     };
 
-    setOnlineStatus(true);
-    // Heartbeat: refresh lastSeen every 2 min so staleness checks stay accurate
-    const pingInterval = setInterval(() => setOnlineStatus(true), 2 * 60 * 1000);
-    const subscription = AppState.addEventListener('change', (state) => {
-      setOnlineStatus(state === 'active');
+    initializeUserSession();
+
+    const pingInterval = setInterval(async () => {
+      try {
+        await updateDoc(doc(db, 'users', uid), { isOnline: true, lastSeen: serverTimestamp() });
+      } catch (e) {}
+    }, 2 * 60 * 1000);
+
+    const subscription = AppState.addEventListener('change', async (state) => {
+      try {
+        await updateDoc(doc(db, 'users', uid), { isOnline: state === 'active' });
+      } catch (e) {}
     });
+    
     return () => {
       clearInterval(pingInterval);
       setOnlineStatus(false);

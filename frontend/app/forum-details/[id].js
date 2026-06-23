@@ -75,7 +75,21 @@ export default function ForumDetailsScreen() {
       ? post.likes.filter(uid => uid !== currentUserId) 
       : [...(post.likes || []), currentUserId];
     setPost({ ...post, likes: newLikes });
-    try { await togglePostLike(id, currentUserId); } 
+    try { 
+      await togglePostLike(id, currentUserId);
+      if (!hasLiked && post.creatorId !== currentUserId) {
+        const myProfile = await getUserProfile(currentUserId);
+        const realName = myProfile?.name || 'A student';
+        
+        sendNotification(
+          post.creatorId,
+          'New Like',
+          `${realName} liked your discussion: "${post.title}"`,
+          'forum',
+          id
+        );
+      }
+    }
     catch (error) { fetchPostAndComments(); }
   };
 

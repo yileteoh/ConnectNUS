@@ -29,16 +29,6 @@ const sendExpoPushNotification = async (expoPushToken, title, body, data) => {
 // Helper function to create a notification document via Admin SDK
 const sendSystemNotification = async (userId, title, body, type, referenceId) => {
   try {
-    await db.collection('notifications').add({
-      userId: userId,
-      title: title,
-      body: body,
-      type: type,
-      referenceId: referenceId,
-      isRead: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
     // Fetch user's push token and fire the Push Notification
     const userDoc = await db.collection('users').doc(userId).get();
     if (userDoc.exists) {
