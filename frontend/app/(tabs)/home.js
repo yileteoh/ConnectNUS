@@ -34,6 +34,9 @@ export default function HomeScreen() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [recommendedEvents, setRecommendedEvents] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -43,9 +46,39 @@ export default function HomeScreen() {
           const userId = auth.currentUser?.uid;
           if (!userId) return;
 
-          const data = await getUserProfile(userId);
-          if (isActive && data) {
-            setProfile(data);
+          const profileData = await getUserProfile(userId);
+          
+          // 2. Fetch All Events
+          const allEvents = await fetchGlobalEvents();
+          const now = new Date().getTime();
+
+          const recommended = [];
+          const upcoming = [];
+
+          // 3. Categorize Events logically
+          allEvents.forEach(event => {
+            const parsedTime = event.time ? new Date(event.time).getTime() : 0;
+            const eventTime = isNaN(parsedTime) ? 0 : parsedTime; 
+
+            const isAttending = (event.creatorId === userId) || 
+                                (event.attendees?.some(a => a.uid === userId || a === userId));
+
+            if (eventTime > now) {
+              if (isAttending) {
+                upcoming.push(event);
+              } else {
+                recommended.push(event); 
+              }
+            }
+          });
+
+          upcoming.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+          recommended.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+          if (isActive) {
+            setProfile(profileData);
+            setUpcomingEvents(upcoming.slice(0, 5));
+            setRecommendedEvents(recommended.slice(0, 5));
           }
         } catch (error) {
           console.error('Failed to sync profile on home tab screen:', error);
@@ -94,96 +127,100 @@ export default function HomeScreen() {
 
         {/* Quick Actions (3 buttons) */}
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/forum')}>
             <Ionicons name="chatbubbles-outline" size={32} color="#F28C28" style={styles.actionIcon} />
             <Text style={styles.actionText}>Forum</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/buddy')}>
             <Ionicons name="person-add-outline" size={32} color="#003D7C" style={styles.actionIcon} />
             <Text style={styles.actionText}>Buddy{"\n"}Match</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
-            <Ionicons name="map-outline" size={32} color="#8B4513" style={styles.actionIcon} />
-            <Text style={styles.actionText}>Study Spot</Text>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/event')}>
+            <Ionicons name="calendar-outline" size={32} color="#8B4513" style={styles.actionIcon} />
+            <Text style={styles.actionText}>Find{"\n"}Events</Text>
           </TouchableOpacity>
         </View>
 
         {/* Recommended Study Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recommended Study</Text>
-          <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
+          <Text style={styles.sectionTitle}>Recommended For You</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/event')}><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
         </View>
         
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          {/* Study Card 1 */}
-          <View style={styles.studyCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={styles.badgeBlue}><Text style={styles.badgeTextWhite}>CS1234S</Text></View>
-              <Ionicons name="people" size={20} color="#F28C28" />
-            </View>
-            <Text style={styles.cardMainTitle}>Data Structures Review</Text>
-            <View style={styles.infoRow}>
-              <Ionicons name="time-outline" size={16} color="#666" />
-              <Text style={styles.infoText}>14:00 - 16:00</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={16} color="#666" />
-              <Text style={styles.infoText}>Central Library Level 4</Text>
-            </View>
-            <TouchableOpacity style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Join Session</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Study Card 2 */}
-          <View style={styles.studyCard}>
-            <View style={styles.cardHeaderRow}>
-              <View style={styles.badgeBlue}><Text style={styles.badgeTextWhite}>MA4321</Text></View>
-              <Ionicons name="people" size={20} color="#F28C28" />
-            </View>
-            <Text style={styles.cardMainTitle}>Calculus Midterm Prep</Text>
-            <View style={styles.infoRow}>
-              <Ionicons name="time-outline" size={16} color="#666" />
-              <Text style={styles.infoText}>16:30 - 18:30</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Ionicons name="location-outline" size={16} color="#666" />
-              <Text style={styles.infoText}>UTown Starbucks</Text>
-            </View>
-            <TouchableOpacity style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Join Session</Text>
-            </TouchableOpacity>
-          </View>
+          {recommendedEvents.length > 0 ? (
+            recommendedEvents.map((event) => (
+              <TouchableOpacity 
+                key={event.id} 
+                style={styles.studyCard} 
+                activeOpacity={0.9}
+                onPress={() => router.push(`/event-details/${event.id}`)}
+              >
+                <View style={styles.cardHeaderRow}>
+                  <View style={styles.badgeBlue}><Text style={styles.badgeTextWhite}>{event.category}</Text></View>
+                  <Ionicons name="people" size={20} color="#F28C28" />
+                </View>
+                <Text style={styles.cardMainTitle} numberOfLines={1}>{event.title}</Text>
+                <View style={styles.infoRow}>
+                  <Ionicons name="time-outline" size={16} color="#666" />
+                  <Text style={styles.infoText}>{formatEventTime(event.time)}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Ionicons name="location-outline" size={16} color="#666" />
+                  <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
+                </View>
+                <View style={styles.primaryButton}>
+                  <Text style={styles.primaryButtonText}>View Details</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <Text style={styles.emptyFeedText}>No new events available right now.</Text>
+          )}
         </ScrollView>
 
         {/* Upcoming Events Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
-          <TouchableOpacity><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
+          <Text style={styles.sectionTitle}>Your Upcoming Events</Text>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-          {/* Event Card 1 */}
-          <View style={styles.eventCard}>
-            <Image 
-              source={{ uri: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=400' }} 
-              style={styles.eventImage} 
-            />
-            <View style={styles.badgeOrangeAbsolute}><Text style={styles.badgeTextWhite}>Tech Week</Text></View>
-            <View style={styles.eventCardContent}>
-              <Text style={styles.cardMainTitle}>AI Career Talk</Text>
-              <View style={styles.infoRow}>
-                <Ionicons name="calendar-outline" size={16} color="#666" />
-                <Text style={styles.infoText}>24 Oct, 18:00</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Ionicons name="location-outline" size={16} color="#666" />
-                <Text style={styles.infoText}>COM1-02-03</Text>
-              </View>
+          {upcomingEvents.length > 0 ? (
+            upcomingEvents.map((event) => (
+              <TouchableOpacity 
+                key={event.id} 
+                style={styles.upcomingCard}
+                activeOpacity={0.9}
+                onPress={() => router.push(`/event-details/${event.id}`)}
+              >
+                <View style={styles.cardHeaderRow}>
+                  <View style={styles.badgeOrange}><Text style={styles.badgeTextWhite}>{event.category}</Text></View>
+                  <Ionicons name="calendar" size={18} color="#F28C28" />
+                </View>
+                <Text style={styles.cardMainTitle} numberOfLines={1}>{event.title}</Text>
+                
+                <View style={styles.infoRow}>
+                  <Ionicons name="time-outline" size={16} color="#666" />
+                  <Text style={styles.infoText}>{formatEventTime(event.time)}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Ionicons name="location-outline" size={16} color="#666" />
+                  <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
+                </View>
+                
+                <View style={styles.primaryButton}>
+                  <Text style={styles.primaryButtonText}>View Details</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.emptyEventBox}>
+              <Ionicons name="calendar-clear-outline" size={30} color="#CCC" />
+              <Text style={styles.emptyFeedText}>You haven't joined any upcoming events.</Text>
             </View>
-          </View>
+          )}
         </ScrollView>
 
         {/* Progress Card */}
@@ -303,6 +340,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EAEAEA',
   },
+  upcomingCard: { 
+    width: 260, 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 16, 
+    padding: 18, 
+    marginRight: 15, 
+    borderWidth: 1, 
+    borderColor: '#EAEAEA',
+    borderLeftWidth: 5,
+    borderLeftColor: '#F28C28',
+  },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -311,6 +359,12 @@ const styles = StyleSheet.create({
   },
   badgeBlue: {
     backgroundColor: '#002D5B',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  badgeOrange: {
+    backgroundColor: '#F28C28',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6

@@ -61,7 +61,11 @@ const initializeUserSession = async () => {
     
     return () => {
       clearInterval(pingInterval);
-      setOnlineStatus(false);
+      try {
+        updateDoc(doc(db, 'users', uid), { isOnline: false });
+      } catch (e) {
+      }
+      subscription.remove();
       subscription.remove();
     };
   }, [user]);

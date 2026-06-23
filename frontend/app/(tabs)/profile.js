@@ -317,7 +317,7 @@ const getPlatformConfig = (url) => {
                 <View style={styles.tagLightBlue}>
                   <Text style={styles.tagTextDark}>{event.category}</Text>
                 </View>
-                <Text style={styles.timeText}>{formatPastDate(event.time)}</Text>
+                <Text style={styles.timeText}>{formatRelativeTime(event.time)}</Text>
               </View>
               <Text style={styles.listCardTitle}>{event.title}</Text>
               <Text style={styles.listCardSubtitle}>
