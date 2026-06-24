@@ -130,14 +130,14 @@ export default function HomeScreen() {
 
         {/* Quick Actions (3 buttons) */}
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/forum')}>
-            <Ionicons name="chatbubbles-outline" size={32} color="#F28C28" style={styles.actionIcon} />
-            <Text style={styles.actionText}>Forum</Text>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/my-discussions')}>
+            <Ionicons name="chatbox-ellipses-outline" size={32} color="#003D7C" style={styles.actionIcon} />
+            <Text style={styles.actionText}>My{"\n"}Discussions</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/buddy')}>
-            <Ionicons name="person-add-outline" size={32} color="#003D7C" style={styles.actionIcon} />
-            <Text style={styles.actionText}>Buddy{"\n"}Match</Text>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/trending-forum')}>
+            <Ionicons name="flame" size={32} color="#D32F2F" style={styles.actionIcon} />
+            <Text style={styles.actionText}>Trending{"\n"}Discussions</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/nus-links')}>
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     width: '31%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 15,
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
