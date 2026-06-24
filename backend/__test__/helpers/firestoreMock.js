@@ -32,10 +32,11 @@ const applyFieldValues = (target, patch) => {
 };
 
 class DocumentSnapshot {
-  constructor(id, value) {
+  constructor(id, value, ref) {
     this.id = id;
     this.exists = Boolean(value);
     this._value = value ? deepClone(value) : undefined;
+    this.ref = ref;
   }
 
   data() {
@@ -44,15 +45,24 @@ class DocumentSnapshot {
 }
 
 class QuerySnapshot {
-  constructor(entries) {
-    this.docs = entries.map(([id, value]) => new DocumentSnapshot(id, value));
+  constructor(entries, collectionRef) {
+    this.docs = entries.map(([id, value]) => new DocumentSnapshot(id, value, collectionRef.doc(id)));
     this.size = this.docs.length;
+    this.empty = this.docs.length === 0;
   }
 
   forEach(callback) {
     this.docs.forEach(callback);
   }
 }
+
+const matchesFilter = (value, [field, op, target]) => {
+  const actual = value ? value[field] : undefined;
+  if (op === 'array-contains') {or
+    return Array.isArray(actual) && actual.includes(target);
+  }
+  return actual === target;
+};
 
 class DocumentReference {
   constructor(store, path) {
@@ -62,7 +72,7 @@ class DocumentReference {
   }
 
   async get() {
-    return new DocumentSnapshot(this.id, this.store.get(this.path));
+    return new DocumentSnapshot(this.id, this.store.get(this.path), this);
   }
 
   async set(data, options = {}) {
@@ -107,7 +117,33 @@ class CollectionReference {
   }
 
   async get() {
-    return new QuerySnapshot(this.store.list(this.path));
+    return new QuerySnapshot(this.store.list(this.path), this);
+  }
+
+  where(field, op, value) {
+    return new Query(this, [[field, op, value]]);
+  }
+
+  orderBy() {
+    return this;
+  }
+}
+
+class Query {
+  constructor(collectionRef, filters) {
+    this.collectionRef = collectionRef;
+    this.filters = filters;
+  }
+
+  where(field, op, value) {
+    return new Query(this.collectionRef, [...this.filters, [field, op, value]]);
+  }
+
+  async get() {
+    const entries = this.collectionRef.store
+      .list(this.collectionRef.path)
+      .filter(([, value]) => this.filters.every((filter) => matchesFilter(value, filter)));
+    return new QuerySnapshot(entries, this.collectionRef);
   }
 
   orderBy() {
@@ -157,6 +193,18 @@ class FirestoreStore {
     };
 
     return callback(transaction);
+  }
+
+  batch() {
+    const ops = [];
+    return {
+      delete: (ref) => ops.push(() => ref.delete()),
+      update: (ref, data) => ops.push(() => ref.update(data)),
+      set: (ref, data, options) => ops.push(() => ref.set(data, options)),
+      commit: async () => {
+        for (const op of ops) await op();
+      }
+    };
   }
 }
 

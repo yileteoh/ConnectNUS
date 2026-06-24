@@ -266,4 +266,5 @@ module.exports = {
   ensureGroupConversation,
   createGroupConversation, addUserToGroupConversation,
   removeUserFromGroupConversation, deleteGroupConversation,
+  buildConversationId,
 };

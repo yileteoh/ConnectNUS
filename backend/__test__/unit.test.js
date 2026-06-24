@@ -1,6 +1,7 @@
 // backend/__tests__/unit.test.js
 const { isValidCapacity } = require('../utils/validation');
 const { getRelativeTime } = require('../utils/timeFormatter');
+const { buildConversationId } = require('../controllers/chatController');
 
 describe('Unit Testing', () => {
 
@@ -39,6 +40,16 @@ describe('Unit Testing', () => {
     test('should gracefully fallback to "Just now" for invalid/empty data', () => {
       expect(getRelativeTime(null)).toBe('Just now');
       expect(getRelativeTime("invalid-date-format")).toBe('Just now');
+    });
+  });
+
+  describe('buildConversationId', () => {
+    test('produces the same id regardless of argument order', () => {
+      expect(buildConversationId('user-a', 'user-b')).toBe(buildConversationId('user-b', 'user-a'));
+    });
+
+    test('joins the sorted ids with an underscore', () => {
+      expect(buildConversationId('zoe', 'alex')).toBe('alex_zoe');
     });
   });
 
