@@ -137,9 +137,9 @@ export default function HomeScreen() {
             <Text style={styles.actionText}>Buddy{"\n"}Match</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/event')}>
-            <Ionicons name="calendar-outline" size={32} color="#8B4513" style={styles.actionIcon} />
-            <Text style={styles.actionText}>Find{"\n"}Events</Text>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/nus-links')}>
+            <Ionicons name="link-outline" size={32} color="#F28C28" style={styles.actionIcon} />
+            <Text style={styles.actionText}>NUS{"\n"}Links</Text>
           </TouchableOpacity>
         </View>
 
