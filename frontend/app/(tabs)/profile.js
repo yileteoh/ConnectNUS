@@ -112,9 +112,12 @@ export default function ProfileScreen() {
 
 if (loading && !profile) {
   return (
-    <SafeAreaView style={styles.absoluteCenterContainer}>
-      <ActivityIndicator size="large" color="#002D5B" />
-      <Text style={styles.fullscreenLoadingText}>Loading your profile...</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <Header showSettings={true} onSettingsPress={() => router.push('/settings')} />
+      <View style={styles.absoluteCenterContainer}>
+        <ActivityIndicator size="large" color="#002D5B" />
+        <Text style={styles.fullscreenLoadingText}>Loading your profile...</Text>
+      </View>
     </SafeAreaView>
   );
 }
@@ -355,11 +358,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FAFAFA',
-    position: 'absolute', // Ensures it stays on top of everything if needed
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
   fullscreenLoadingText: {
     marginTop: 12,

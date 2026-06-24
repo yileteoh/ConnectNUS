@@ -102,8 +102,11 @@ export default function HomeScreen() {
   // Full-screen loading placeholder to guard uninitialized state renders beautifully
   if (loading && !profile) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#002D5B" />
+      <SafeAreaView style={styles.safeArea}>
+        <Header showSettings={false} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#002D5B" />
+        </View>
       </SafeAreaView>
     );
   }
