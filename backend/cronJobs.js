@@ -1,7 +1,6 @@
 // backend/cronJobs.js
 const cron = require('node-cron');
 const admin = require('firebase-admin');
-const fetch = require('node-fetch');
 
 const db = admin.firestore();
 
