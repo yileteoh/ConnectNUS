@@ -178,16 +178,22 @@ describe('Milestone 1 API integration', () => {
       });
     });
 
-    test('GET /api/events lists only future invitations and hydrates creator profile data', async () => {
+    test('GET /api/events lists all invitations newest-first and hydrates creator profile data', async () => {
+      // Past-event filtering happens client-side (frontend/app/(tabs)/event.js), not in
+      // this endpoint, so both past and future invitations should come back here.
       const response = await request(app).get('/api/events?category=Study');
 
       expect(response.statusCode).toBe(200);
-      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data).toHaveLength(2);
       expect(response.body.data[0]).toMatchObject({
         id: 'open-event',
         title: 'CS2103T Revision',
         creatorName: 'Host Student',
         creatorPicUrl: 'https://example.com/host.png'
+      });
+      expect(response.body.data[1]).toMatchObject({
+        id: 'past-event',
+        title: 'Old Session'
       });
     });
 
