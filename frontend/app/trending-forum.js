@@ -136,10 +136,6 @@ export default function TrendingForumScreen() {
             <View style={[styles.tagBadge, { backgroundColor: tagStyle.bg }]}>
               <Text style={[styles.tagText, { color: tagStyle.text }]}>{post.category}</Text>
             </View>
-            {/* Visual indicator for Hot items */}
-            {post.trendingScore >= 5 && (
-               <Ionicons name="flame" size={16} color="#D32F2F" style={{ marginLeft: 8 }} />
-            )}
           </View>
           <Text style={styles.timeText}>{getRelativeTime(post.createdAt)}</Text>
         </View>
