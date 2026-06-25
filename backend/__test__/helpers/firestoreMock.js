@@ -1,14 +1,21 @@
 const deepClone = (value) => JSON.parse(JSON.stringify(value));
 
 const SERVER_TIMESTAMP = { __fieldValue: 'serverTimestamp' };
+const DELETE_FIELD = { __fieldValue: 'delete' };
 
 const arrayUnion = (...values) => ({ __fieldValue: 'arrayUnion', values });
 const arrayRemove = (...values) => ({ __fieldValue: 'arrayRemove', values });
+const deleteField = () => DELETE_FIELD;
 
 const applyFieldValues = (target, patch) => {
   Object.entries(patch).forEach(([key, value]) => {
     if (value && value.__fieldValue === 'serverTimestamp') {
       target[key] = { seconds: Math.floor(Date.now() / 1000), toMillis: () => Date.now() };
+      return;
+    }
+
+    if (value && value.__fieldValue === 'delete') {
+      delete target[key];
       return;
     }
 
@@ -58,7 +65,7 @@ class QuerySnapshot {
 
 const matchesFilter = (value, [field, op, target]) => {
   const actual = value ? value[field] : undefined;
-  if (op === 'array-contains') {or
+  if (op === 'array-contains') {
     return Array.isArray(actual) && actual.includes(target);
   }
   return actual === target;
@@ -214,5 +221,6 @@ module.exports = {
   SERVER_TIMESTAMP,
   arrayRemove,
   arrayUnion,
+  deleteField,
   createFirestoreMock
 };
