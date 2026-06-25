@@ -10,7 +10,7 @@ import { auth } from '../../firebaseConfig';
 import { getEventDetails, joinEvent, leaveEvent, deleteEvent } from '../../services/eventService';
 import { ensureGroupConversation } from '../../services/chatService';
 import * as Calendar from 'expo-calendar';
-import {sendNotification} from '../../services/notificationService';
+import { sendNotification } from '../../services/notificationHelper';
 
 const formatEventTime = (isoString) => {
   if (!isoString) return 'Time TBD';
