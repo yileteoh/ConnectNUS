@@ -10,7 +10,6 @@ import { auth } from '../../firebaseConfig';
 import { getEventDetails, joinEvent, leaveEvent, deleteEvent } from '../../services/eventService';
 import { ensureGroupConversation } from '../../services/chatService';
 import * as Calendar from 'expo-calendar';
-import { sendNotification } from '../../services/notificationHelper';
 
 const formatEventTime = (isoString) => {
   if (!isoString) return 'Time TBD';
@@ -112,16 +111,6 @@ export default function EventDetailsScreen() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              const participantsToNotify = currentAttendees.filter(a => a.uid !== currentUserId);
-              await Promise.all(participantsToNotify.map(attendee => 
-                sendNotification(
-                  attendee.uid, // receiver
-                  'Event Cancelled', // title
-                  `The host has cancelled the upcoming event: "${event.title}".`, // body
-                  'event', // type
-                  id // referenceId
-                ).catch(err => console.log('Notification failed for user:', attendee.uid, err))
-              ));
               await deleteEvent(id, currentUserId);
               Alert.alert('Cancelled', 'Your event listing has been cancelled.', [
                 { text: 'Back', onPress: () => router.replace('/(tabs)/event') }

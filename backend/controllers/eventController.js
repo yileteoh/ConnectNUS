@@ -248,9 +248,73 @@ exports.deleteEvent = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Gathering records not found.' });
     }
 
+    const eventData = eventDoc.data();
+    
     // Ensure the requesting user is the real creator
-    if (eventDoc.data().creatorId !== userId) {
+    if (eventData.creatorId !== userId) {
       return res.status(403).json({ status: 'error', message: 'Permission denied. Only hosts can dissolve gatherings.' });
+    }
+
+    const attendees = eventData.attendees || [];
+    
+    // Filter out the host to prevent sending a cancellation notice to themselves
+    const participantsToNotify = attendees.filter(uid => uid !== userId);
+
+    if (participantsToNotify.length > 0) {
+      const batch = db.batch(); 
+      const pushMessages = []; 
+      
+      for (const attendeeUid of participantsToNotify) {
+        // 1. Construct In-App Notification (Written directly to root 'notifications' collection)
+        const notifRef = db.collection('notifications').doc(); 
+        batch.set(notifRef, {
+          userId: attendeeUid, 
+          title: 'Event Cancelled',
+          body: `The host has cancelled the upcoming event: "${eventData.title}".`,
+          type: 'event',
+          referenceId: eventId,
+          isRead: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 2. Fetch the user's Push Token from the 'users' collection
+        const userDoc = await db.collection('users').doc(attendeeUid).get();
+        if (userDoc.exists) {
+          const pushToken = userDoc.data().pushToken;
+          
+          if (pushToken) {
+            // Package the OS push notification payload
+            pushMessages.push({
+              to: pushToken,
+              sound: 'default',
+              title: 'Event Cancelled',
+              body: `The host has cancelled the upcoming event: "${eventData.title}".`,
+              data: { type: 'event', referenceId: eventId },
+            });
+          }
+        }
+      }
+      
+      // 3. Execute all database writes simultaneously (Super fast In-App notifications)
+      await batch.commit(); 
+
+      // 4. Trigger OS Push Notifications via Expo's batch endpoint
+      if (pushMessages.length > 0) {
+        try {
+          await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Accept-encoding': 'gzip, deflate',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(pushMessages), 
+          });
+          console.log(`Successfully sent Expo push notifications to ${pushMessages.length} users.`);
+        } catch (pushErr) {
+          console.error('Error sending Expo Push Notification from backend:', pushErr);
+        }
+      }
     }
 
     // Execute absolute document wipeout
