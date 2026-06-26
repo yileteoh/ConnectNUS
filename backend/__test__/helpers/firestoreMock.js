@@ -1,4 +1,16 @@
-const deepClone = (value) => JSON.parse(JSON.stringify(value));
+// Custom clone (not JSON.parse/stringify) so seeded Firestore-Timestamp-style
+// objects like { seconds: 1, toMillis: () => 1000 } keep their toMillis function.
+const deepClone = (value) => {
+  if (Array.isArray(value)) return value.map(deepClone);
+  if (value && typeof value === 'object') {
+    const clone = {};
+    Object.entries(value).forEach(([key, val]) => {
+      clone[key] = typeof val === 'function' ? val : deepClone(val);
+    });
+    return clone;
+  }
+  return value;
+};
 
 const SERVER_TIMESTAMP = { __fieldValue: 'serverTimestamp' };
 const DELETE_FIELD = { __fieldValue: 'delete' };
