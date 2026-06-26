@@ -372,14 +372,7 @@ const styles = StyleSheet.create({
   attendeeList: { flexDirection: 'row', flexWrap: 'wrap' },
   avatarWrapper: { marginRight: 10, marginBottom: 10 },
   avatarPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#A8C5E6', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
-  avatarHostBorder: { backgroundColor: '#002D5B' }, // Set distinct color theme for event host organizer
   avatarText: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingVertical: 15, borderTopWidth: 1, borderColor: '#EAEAEA', paddingBottom: Platform.OS === 'ios' ? 30 : 15 },
-  joinButton: { backgroundColor: '#F28C28', flexDirection: 'row', borderRadius: 10, paddingVertical: 16, justifyContent: 'center', alignItems: 'center' },
-  fullButton: { backgroundColor: '#CCCCCC' }, 
-  hostButton: { backgroundColor: '#002D5B' }, // Premium Navy color representing authorized ownership
-  leaveButton: { backgroundColor: '#D32F2F' }, // Vibrant warning red color for drop-out triggers
-  joinButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
   attendeeNameLabel: { fontSize: 11, color: '#555555', textAlign: 'center', marginTop: 4, fontWeight: '500', width: 55, marginLeft: -3 },
   avatarCircleFrame: { 
     width: 50, 

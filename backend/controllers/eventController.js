@@ -271,7 +271,7 @@ exports.deleteEvent = async (req, res) => {
           userId: attendeeUid, 
           title: 'Event Cancelled',
           body: `The host has cancelled the upcoming event: "${eventData.title}".`,
-          type: 'event',
+          type: 'event_cancelled',
           referenceId: eventId,
           isRead: false,
           createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -289,7 +289,7 @@ exports.deleteEvent = async (req, res) => {
               sound: 'default',
               title: 'Event Cancelled',
               body: `The host has cancelled the upcoming event: "${eventData.title}".`,
-              data: { type: 'event', referenceId: eventId },
+              data: { type: 'event_cancelled', referenceId: eventId },
             });
           }
         }

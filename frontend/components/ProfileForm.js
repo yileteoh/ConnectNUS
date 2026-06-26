@@ -338,7 +338,7 @@ export default function ProfileForm({
             </View>
 
             {!isFetchingModules && moduleQuery.trim() !== '' && moduleOptions.length === 0 && (
-              <Text style={styles.helperText}>No modules found matching "{moduleQuery}".</Text>
+              <Text style={styles.helperText}>No modules found matching {moduleQuery}.</Text>
             )}
 
             <Text style={styles.helperText}>

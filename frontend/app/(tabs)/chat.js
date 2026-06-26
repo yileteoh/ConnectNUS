@@ -36,6 +36,7 @@ export default function ChatScreen() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myBuddyId, setMyBuddyId] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -50,6 +51,8 @@ export default function ChatScreen() {
   // Real-time listener — same query the Header badge already uses, so permissions are confirmed working
   useEffect(() => {
     if (!currentUserId) return;
+    let retryTimer;
+
     const q = query(
       collection(db, 'conversations'),
       where('participants', 'array-contains', currentUserId)
@@ -64,11 +67,28 @@ export default function ChatScreen() {
       setConversations(docs);
       setLoading(false);
     }, (err) => {
-      console.error('Conversations listener error:', err);
-      setLoading(false);
+      const activeUserId = auth.currentUser?.uid;
+      const isAuthSwitching = err.code === 'permission-denied' && activeUserId !== currentUserId;
+
+      if (isAuthSwitching) {
+        return;
+      }
+
+      console.warn('Conversations listener error:', err);
+      if (err.code === 'permission-denied') {
+        setLoading(false);
+        return;
+      }
+
+      retryTimer = setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+      }, 1500);
     });
-    return unsub;
-  }, [currentUserId]);
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      unsub();
+    };
+  }, [currentUserId, retryCount]);
 
   const sortedConversations = [...conversations].sort((a, b) => {
     const otherIdA = a.participants?.find((id) => id !== currentUserId);

@@ -331,7 +331,7 @@ const getPlatformConfig = (url) => {
         ) : (
           <View style={styles.emptyPastSessions}>
              <Ionicons name="time-outline" size={30} color="#CCC" style={{marginBottom: 8}} />
-             <Text style={styles.placeholderText}>You haven't attended any events yet.</Text>
+             <Text style={styles.placeholderText}>You have not attended any events yet.</Text>
           </View>
         )}
       </ScrollView>

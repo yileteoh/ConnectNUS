@@ -226,7 +226,7 @@ export default function EventScreen() {
             <View style={styles.emptyState}>
               <Ionicons name="calendar-clear-outline" size={60} color="#CCC" />
               <Text style={styles.emptyStateTitle}>No events found</Text>
-              <Text style={styles.emptyStateSub}>Be the first to host something for '{activeCategory}'!</Text>
+              <Text style={styles.emptyStateSub}>Be the first to host something for {activeCategory}!</Text>
             </View>
           );
         }}

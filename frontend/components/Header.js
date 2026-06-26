@@ -25,6 +25,8 @@ export default function Header({ showSettings, onSettingsPress, onNotificationPr
 
       unsubSnap = onSnapshot(q, (snap) => {
         setHasUnread(!snap.empty);
+      }, (error) => {
+        console.warn('Header badge listener dropped silently:', error.message);
       });
     });
     

@@ -28,6 +28,8 @@ const sendExpoPushNotification = async (expoPushToken, title, body, data) => {
 // Helper function to create a notification document via Admin SDK
 const sendSystemNotification = async (userId, title, body, type, referenceId) => {
   try {
+    if (!userId) return;
+
     // Fetch user's push token and fire the Push Notification
     const userDoc = await db.collection('users').doc(userId).get();
     if (userDoc.exists) {
@@ -55,22 +57,27 @@ const eventReminderJob = cron.schedule('0 * * * *', async () => {
       .where('time', '<=', tomorrowEnd)
       .get();
 
+    const reminderTasks = [];
+
     eventsSnapshot.forEach((doc) => {
       const event = doc.data();
       const attendees = event.attendees || [];
       
       // Notify every attendee
       attendees.forEach((attendee) => {
-        sendSystemNotification(
-          attendee.uid,
+        const attendeeId = typeof attendee === 'string' ? attendee : attendee.uid;
+        reminderTasks.push(sendSystemNotification(
+          attendeeId,
           'Event Reminder',
           `Get ready! "${event.title}" starts in 24 hours.`,
           'event',
           doc.id
-        );
+        ));
       });
       console.log(`[CRON] Sent reminders for event: ${event.title}`);
     });
+
+    await Promise.all(reminderTasks);
   } catch (error) {
     console.error('[CRON] Event Reminder Error:', error);
   }
@@ -94,15 +101,15 @@ const buddyNudgeJob = cron.schedule('0 12 * * *', async () => {
       usersToNotify.add(req.receiverId);
     });
 
-    usersToNotify.forEach((userId) => {
+    await Promise.all(Array.from(usersToNotify).map((userId) =>
       sendSystemNotification(
         userId,
         'Pending Buddy Request',
         'You have a buddy request waiting! ',
         'buddy',
         userId // Can route to their own profile/inbox
-      );
-    });
+      )
+    ));
     console.log(`[CRON] Sent buddy nudges to ${usersToNotify.size} users.`);
   } catch (error) {
     console.error('[CRON] Buddy Nudge Error:', error);

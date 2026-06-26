@@ -206,7 +206,7 @@ export default function TrendingForumScreen() {
           return (
             <View style={styles.emptyState}>
               <Ionicons name="trending-down" size={60} color="#CCC" />
-              <Text style={styles.emptyStateTitle}>It's quiet here...</Text>
+              <Text style={styles.emptyStateTitle}>It is quiet here...</Text>
               <Text style={styles.emptyStateSub}>No trending discussions in the past 7 days.</Text>
             </View>
           );

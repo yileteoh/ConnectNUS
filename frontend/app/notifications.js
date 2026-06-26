@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  SafeAreaView, Platform, StatusBar, ActivityIndicator 
+  SafeAreaView, Platform, StatusBar, ActivityIndicator, Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -41,17 +41,33 @@ export default function NotificationsScreen() {
   const handlePress = async (item) => {
     // 1. Mark as read in Firestore
     if (!item.isRead) {
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.id === item.id ? { ...notification, isRead: true } : notification
+        )
+      );
+
       try {
         await updateDoc(doc(db, 'notifications', item.id), { isRead: true });
       } catch (error) {
         console.error('Error marking notification as read:', error);
+        setNotifications((current) =>
+          current.map((notification) =>
+            notification.id === item.id ? { ...notification, isRead: false } : notification
+          )
+        );
       }
+    }
+
+    if (item.type === 'event_cancelled' || item.title === 'Event Cancelled') {
+      Alert.alert('Event Cancelled', 'This event has been dissolved and is no longer available.');
+      return;
     }
 
     // 2. Navigate based on notification type
     switch (item.type) {
       case 'event':
-        router.push(`/event-details/${item.referenceId}`);
+        if (item.referenceId) router.push(`/event-details/${item.referenceId}`);
         break;
       case 'forum':
         router.push(`/forum-details/${item.referenceId}`);
@@ -69,6 +85,7 @@ export default function NotificationsScreen() {
     switch (type) {
       case 'chat': return { name: 'chatbubble-ellipses', color: '#0288D1' };
       case 'event': return { name: 'calendar', color: '#2E7D32' };
+      case 'event_cancelled': return { name: 'calendar-clear', color: '#2E7D32' };
       case 'forum': return { name: 'megaphone', color: '#E53935' };
       case 'buddy': return { name: 'people', color: '#F28C28' };
       default: return { name: 'notifications', color: '#666' };
@@ -130,7 +147,7 @@ export default function NotificationsScreen() {
             <View style={styles.emptyState}>
               <Ionicons name="notifications-off-outline" size={60} color="#CCC" />
               <Text style={styles.emptyTitle}>All caught up!</Text>
-              <Text style={styles.emptySub}>You don't have any notifications right now.</Text>
+              <Text style={styles.emptySub}>You do not have any notifications right now.</Text>
             </View>
           }
         />

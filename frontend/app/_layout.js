@@ -3,14 +3,16 @@ import React, { useEffect, useState, createContext } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { auth, db } from '../firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { ActivityIndicator, View, AppState } from 'react-native';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ActivityIndicator, View, AppState, LogBox } from 'react-native';
 import {
   getCachedProfileSetupComplete,
   getUserProfile,
   setCachedProfileSetupComplete,
 } from '../services/profileService';
 import { registerForPushNotificationsAsync } from '../services/notificationHelper';
+
+LogBox.ignoreLogs(['FirebaseError: Missing or insufficient permissions']);
 
 // Create a global AuthContext to share the profile setup state across screens
 export const AuthContext = createContext();
@@ -29,16 +31,16 @@ export default function RootLayout() {
     // Capture uid now — auth.currentUser will be null by the time the cleanup runs on logout
     const uid = user.uid;
 
-const initializeUserSession = async () => {
+    const initializeUserSession = async () => {
       try {
-        await updateDoc(doc(db, 'users', uid), {
+        await setDoc(doc(db, 'users', uid), {
           isOnline: true,
           lastSeen: serverTimestamp(),
-        });
+        }, { merge: true });
 
         const token = await registerForPushNotificationsAsync();
         if (token) {
-          await updateDoc(doc(db, 'users', uid), { pushToken: token });
+          await setDoc(doc(db, 'users', uid), { pushToken: token }, { merge: true });
         }
       } catch (e) {
         console.log("Failed to initialize user session:", e);
@@ -49,23 +51,19 @@ const initializeUserSession = async () => {
 
     const pingInterval = setInterval(async () => {
       try {
-        await updateDoc(doc(db, 'users', uid), { isOnline: true, lastSeen: serverTimestamp() });
-      } catch (e) {}
+        await setDoc(doc(db, 'users', uid), { isOnline: true, lastSeen: serverTimestamp() }, { merge: true });
+      } catch (_e) {}
     }, 2 * 60 * 1000);
 
     const subscription = AppState.addEventListener('change', async (state) => {
       try {
-        await updateDoc(doc(db, 'users', uid), { isOnline: state === 'active' });
-      } catch (e) {}
+        await setDoc(doc(db, 'users', uid), { isOnline: state === 'active' }, { merge: true });
+      } catch (_e) {}
     });
     
     return () => {
       clearInterval(pingInterval);
-      try {
-        updateDoc(doc(db, 'users', uid), { isOnline: false });
-      } catch (e) {
-      }
-      subscription.remove();
+      setDoc(doc(db, 'users', uid), { isOnline: false }, { merge: true }).catch(() => {});
       subscription.remove();
     };
   }, [user]);

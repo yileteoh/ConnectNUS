@@ -221,7 +221,7 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.emptyEventBox}>
               <Ionicons name="calendar-clear-outline" size={30} color="#CCC" />
-              <Text style={styles.emptyFeedText}>You haven't joined any upcoming events.</Text>
+              <Text style={styles.emptyFeedText}>You have not joined any upcoming events.</Text>
             </View>
           )}
         </ScrollView>

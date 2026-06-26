@@ -249,7 +249,7 @@ export default function ForumScreen() {
             <View style={styles.emptyState}>
               <Ionicons name="chatbubbles-outline" size={60} color="#CCC" />
               <Text style={styles.emptyStateTitle}>No discussions yet</Text>
-              <Text style={styles.emptyStateSub}>Be the first to start a conversation in '{activeCategory}'!</Text>
+              <Text style={styles.emptyStateSub}>Be the first to start a conversation in {activeCategory}!</Text>
             </View>
           );
         }}
