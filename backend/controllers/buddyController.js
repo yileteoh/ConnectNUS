@@ -49,7 +49,7 @@ const getRecommendations = async (req, res) => {
     });
 
     // Sort by match score descending
-    recommendations.sort((a, b) => b.matchScore - a.matchScore || Math.random() - 0.5);
+    recommendations = recommendations.sort((a, b) => b.matchScore - a.matchScore || Math.random() - 0.5).slice(0, 10); // Limit to top 10 recommendations
 
     return res.status(200).json({ status: 'success', data: recommendations });
   } catch (error) {
