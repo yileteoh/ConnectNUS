@@ -406,11 +406,9 @@ exports.getAIRecommendedEvents = async (req, res) => {
     const now = Date.now();
 
     availableEvents = availableEvents.filter(e => {
-      const notJoined = e.creatorId !== userId && !(e.attendees || []).includes(userId);
-      const eventTime = e.time ? new Date(e.time).getTime() : 0;
-      const isFuture = eventTime > now; 
-      
-      return notJoined && isFuture;
+      const attendees = e.attendees || [];
+      const hasJoined = attendees.some(a => a === userId || a.uid === userId);
+      return e.creatorId !== userId && !hasJoined;
     });
 
     console.log(`User ${userId} has ${availableEvents.length} available events for AI recommendation.`);
@@ -431,15 +429,25 @@ exports.getAIRecommendedEvents = async (req, res) => {
       Available Events (JSON):
       ${JSON.stringify(availableEvents.map(e => ({ id: e.id, title: e.title, category: e.category, description: e.description })))}
 
-      Task: Return ONLY a JSON array of string IDs for the top 10 recommended events.
-      CRITICAL WARNING: You MUST strictly use the exact 'id' from the provided JSON. Do NOT use example IDs.
+      Task: Return ONLY a JSON array of string IDs for the top recommended events.
+      CRITICAL WARNING: 
+      - Output EXACTLY ONE valid JSON array. 
+      - If there are no matches, return exactly this: []
+      - Do NOT output multiple arrays.
     `;
 
     const result = await model.generateContent(prompt);
     let rawText = result.response.text();
-    console.log('Raw AI Response:', rawText);
-    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const recommendedIds = JSON.parse(rawText);
+
+    let recommendedIds = [];
+    try {
+      rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const arrayMatch = rawText.match(/\[[\s\S]*?\]/);
+      recommendedIds = arrayMatch ? JSON.parse(arrayMatch[0]) : [];
+    } catch (parseError) {
+      console.error(parseError.message);
+      recommendedIds = [];
+    }
 
     const finalData = recommendedIds.map(id => {
       return availableEvents.find(e => e.id === id);
