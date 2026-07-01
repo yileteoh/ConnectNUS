@@ -436,15 +436,11 @@ exports.getAIRecommendedEvents = async (req, res) => {
     const result = await model.generateContent(prompt);
     let rawText = result.response.text();
     rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const aiRecommendations = JSON.parse(rawText);
+    const recommendedIds = JSON.parse(rawText);
 
-    const finalData = aiRecommendations.map(rec => {
-      const fullEventData = availableEvents.find(e => e.id === rec.eventId);
-      return { 
-        ...fullEventData, 
-        aiReason: rec.aiReason
-      };
-    }).filter(e => e.id);
+    const finalData = recommendedIds.map(id => {
+      return availableEvents.find(e => e.id === id);
+    }).filter(event => event !== undefined);
 
     return res.status(200).json({
       status: 'success',
