@@ -408,7 +408,9 @@ exports.getAIRecommendedEvents = async (req, res) => {
     availableEvents = availableEvents.filter(e => {
       const attendees = e.attendees || [];
       const hasJoined = attendees.some(a => a === userId || a.uid === userId);
-      return e.creatorId !== userId && !hasJoined;
+      const eventTime = e.time ? new Date(e.time).getTime() : 0;
+      const isFuture = !isNaN(eventTime) && eventTime > now;
+      return e.creatorId !== userId && !hasJoined && isFuture;
     });
 
     console.log(`User ${userId} has ${availableEvents.length} available events for AI recommendation.`);
@@ -429,29 +431,37 @@ exports.getAIRecommendedEvents = async (req, res) => {
       Available Events (JSON):
       ${JSON.stringify(availableEvents.map(e => ({ id: e.id, title: e.title, category: e.category, description: e.description })))}
 
-      Task: Return ONLY a JSON array of string IDs for the top recommended events.
-      CRITICAL WARNING: 
-      - Output EXACTLY ONE valid JSON array. 
-      - If there are no matches, return exactly this: []
-      - Do NOT output multiple arrays.
+      Task: Rank ALL the given events from most to least relevant to this user's profile,
+      and return their IDs as a JSON array of strings, most relevant first.
+      - ALWAYS include every event ID, even if the match is only weak or general — never omit an event.
+      - Do NOT return an empty array unless the "Available Events" list itself is empty.
+      - Output EXACTLY ONE valid JSON array of strings and nothing else.
     `;
-
-    const result = await model.generateContent(prompt);
-    let rawText = result.response.text();
 
     let recommendedIds = [];
     try {
+      const result = await model.generateContent(prompt);
+      let rawText = result.response.text();
       rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
       const arrayMatch = rawText.match(/\[[\s\S]*?\]/);
       recommendedIds = arrayMatch ? JSON.parse(arrayMatch[0]) : [];
     } catch (parseError) {
-      console.error(parseError.message);
+      console.error('AI generation/parse failed:', parseError.message);
       recommendedIds = [];
     }
 
-    const finalData = recommendedIds.map(id => {
-      return availableEvents.find(e => e.id === id);
-    }).filter(event => event !== undefined);
+    let finalData = recommendedIds
+      .map(id => availableEvents.find(e => e.id === id))
+      .filter(event => event !== undefined);
+
+    if (finalData.length === 0) {
+      finalData = [...availableEvents].sort(
+        (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+      );
+    }
+
+    // Cap at 10 recommendations
+    finalData = finalData.slice(0, 10);
 
     console.log(`AI recommended ${finalData.length} events for user ${userId}.`);
 
