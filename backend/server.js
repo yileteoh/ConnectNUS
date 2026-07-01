@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const routes = require('./routes');
 const { saveMessage, setUnreadForParticipants } = require('./controllers/chatController');
 const { startAllCronJobs } = require('./cronJobs');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;

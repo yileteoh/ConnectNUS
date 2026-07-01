@@ -9,5 +9,6 @@ router.put('/events/:eventId/join', eventController.joinEvent);
 router.put('/events/:eventId/leave', eventController.leaveEvent);
 router.delete('/events/:eventId', eventController.deleteEvent);
 router.put('/events/:eventId', eventController.updateEvent);
+router.get('/recommendations/:userId', eventController.getAIRecommendedEvents);
 
 module.exports = router;
