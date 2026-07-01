@@ -403,9 +403,15 @@ exports.getAIRecommendedEvents = async (req, res) => {
     const eventsSnapshot = await db.collection('events').where('status', '==', 'open').get();
     let availableEvents = eventsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    availableEvents = availableEvents.filter(e => 
-      e.creatorId !== userId && !(e.attendees || []).includes(userId)
-    );
+    const now = Date.now();
+
+    availableEvents = availableEvents.filter(e => {
+      const notJoined = e.creatorId !== userId && !(e.attendees || []).includes(userId);
+      const eventTime = e.time ? new Date(e.time).getTime() : 0;
+      const isFuture = eventTime > now; 
+      
+      return notJoined && isFuture;
+    });
 
     if (availableEvents.length === 0) {
       return res.status(200).json({ status: 'success', data: [] });
@@ -418,25 +424,13 @@ exports.getAIRecommendedEvents = async (req, res) => {
     });
 
     const prompt = `
-      You are an intelligent event recommendation engine for ConnectNUS.
-      Here is the User Profile:
-      - Name: ${userData.name || 'Student'}
-      - Faculty: ${userData.faculty || 'Unknown'}
-      - Interests/Tags: ${(userData.interests || []).join(', ')}
-
-      Here is the list of available events (JSON format):
+      You are an intelligent event recommendation engine.
+      User Profile: Faculty: ${userData.faculty || 'Unknown'}, Interests: ${(userData.interests || []).join(', ')}
+      Available Events (JSON):
       ${JSON.stringify(availableEvents.map(e => ({ id: e.id, title: e.title, category: e.category, description: e.description })))}
 
-      Task: Select the top 10 events that best match this user's profile.
-      For each event, write a personalized 1-sentence reason (under 15 words) explaining why they should join, addressing the user directly (e.g., "Since you love tech...").
-
-      You MUST return ONLY a JSON array in the exact format below:
-      [
-        {
-          "eventId": "event_id_here",
-          "aiReason": "Your personalized 1-sentence reason here"
-        }
-      ]
+      Task: Return ONLY a JSON array of string IDs for the top 10 recommended events.
+      Example format: ["event_id_1", "event_id_2"]
     `;
 
     const result = await model.generateContent(prompt);

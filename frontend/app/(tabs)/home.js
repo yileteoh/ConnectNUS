@@ -173,11 +173,6 @@ export default function HomeScreen() {
                   <Ionicons name="sparkles" size={20} color="#F28C28" />
                 </View>
                 <Text style={styles.cardMainTitle} numberOfLines={1}>{event.title}</Text>
-                {event.aiReason && (
-                  <View style={styles.aiReasonBox}>
-                    <Text style={styles.aiReasonText} numberOfLines={2}>"{event.aiReason}"</Text>
-                  </View>
-                )}
                 <View style={styles.infoRow}>
                   <Ionicons name="time-outline" size={16} color="#666" />
                   <Text style={styles.infoText}>{formatEventTime(event.time)}</Text>
@@ -394,20 +389,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#002D5B',
     marginBottom: 10
-  },
-  aiReasonBox: { 
-    backgroundColor: '#F0F4FF', 
-    padding: 10, 
-    borderRadius: 8, 
-    marginBottom: 12, 
-    borderLeftWidth: 3, 
-    borderLeftColor: '#F28C28' 
-  },
-  aiReasonText: { 
-    fontSize: 13, 
-    color: '#002D5B', 
-    fontStyle: 'italic',
-    lineHeight: 18 
   },
   infoRow: {
     flexDirection: 'row',
