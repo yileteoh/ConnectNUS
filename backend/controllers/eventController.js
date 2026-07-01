@@ -413,6 +413,8 @@ exports.getAIRecommendedEvents = async (req, res) => {
       return notJoined && isFuture;
     });
 
+    console.log(`User ${userId} has ${availableEvents.length} available events for AI recommendation.`);
+
     if (availableEvents.length === 0) {
       return res.status(200).json({ status: 'success', data: [] });
     }
@@ -430,17 +432,20 @@ exports.getAIRecommendedEvents = async (req, res) => {
       ${JSON.stringify(availableEvents.map(e => ({ id: e.id, title: e.title, category: e.category, description: e.description })))}
 
       Task: Return ONLY a JSON array of string IDs for the top 10 recommended events.
-      Example format: ["event_id_1", "event_id_2"]
+      CRITICAL WARNING: You MUST strictly use the exact 'id' from the provided JSON. Do NOT use example IDs.
     `;
 
     const result = await model.generateContent(prompt);
     let rawText = result.response.text();
+    console.log('Raw AI Response:', rawText);
     rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
     const recommendedIds = JSON.parse(rawText);
 
     const finalData = recommendedIds.map(id => {
       return availableEvents.find(e => e.id === id);
     }).filter(event => event !== undefined);
+
+    console.log(`AI recommended ${finalData.length} events for user ${userId}.`);
 
     return res.status(200).json({
       status: 'success',
