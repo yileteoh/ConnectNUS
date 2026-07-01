@@ -19,6 +19,9 @@ import { auth } from '../../firebaseConfig';
 import { useFocusEffect } from '@react-navigation/native';
 import { getUserProfile } from '../../services/profileService';
 import { fetchGlobalEvents } from '../../services/eventService';
+import Constants from 'expo-constants';
+
+const BASE_URL = Constants.expoConfig?.extra?.backendUrl;
 
 const formatEventTime = (isoString) => {
   if (!isoString) return 'Time TBD';
@@ -51,8 +54,6 @@ export default function HomeScreen() {
           // 2. Fetch All Events
           const allEvents = await fetchGlobalEvents();
           const now = new Date().getTime();
-
-          const recommended = [];
           const upcoming = [];
 
           // 3. Categorize Events logically
@@ -63,22 +64,28 @@ export default function HomeScreen() {
             const isAttending = (event.creatorId === userId) || 
                                 (event.attendees?.some(a => a.uid === userId || a === userId));
 
-            if (eventTime > now) {
-              if (isAttending) {
-                upcoming.push(event);
-              } else {
-                recommended.push(event); 
-              }
+            if (eventTime > now && isAttending) {
+              upcoming.push(event);
             }
           });
 
           upcoming.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-          recommended.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+          let aiRecommendations = [];
+          try {
+            const aiResponse = await fetch(`${BASE_URL}/api/events/recommendations/${userId}`);
+            const aiResult = await aiResponse.json();
+            if (aiResult.status === 'success') {
+              aiRecommendations = aiResult.data;
+            }
+          } catch (aiError) {
+            console.error('AI Recommendation fetch failed:', aiError);
+          }
 
           if (isActive) {
             setProfile(profileData);
             setUpcomingEvents(upcoming.slice(0, 5));
-            setRecommendedEvents(recommended.slice(0, 5));
+            setRecommendedEvents(aiRecommendations);
           }
         } catch (error) {
           console.error('Failed to sync profile on home tab screen:', error);
@@ -146,7 +153,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Recommended Study Section */}
+        {/* Recommended Event Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recommended For You</Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/event')}><Text style={styles.seeAllText}>See All</Text></TouchableOpacity>
@@ -163,9 +170,14 @@ export default function HomeScreen() {
               >
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.badgeBlue}><Text style={styles.badgeTextWhite}>{event.category}</Text></View>
-                  <Ionicons name="people" size={20} color="#F28C28" />
+                  <Ionicons name="sparkles" size={20} color="#F28C28" />
                 </View>
                 <Text style={styles.cardMainTitle} numberOfLines={1}>{event.title}</Text>
+                {event.aiReason && (
+                  <View style={styles.aiReasonBox}>
+                    <Text style={styles.aiReasonText} numberOfLines={2}>"{event.aiReason}"</Text>
+                  </View>
+                )}
                 <View style={styles.infoRow}>
                   <Ionicons name="time-outline" size={16} color="#666" />
                   <Text style={styles.infoText}>{formatEventTime(event.time)}</Text>
@@ -180,7 +192,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             ))
           ) : (
-            <Text style={styles.emptyFeedText}>No new events available right now.</Text>
+            <Text style={styles.emptyFeedText}>No personalized recommendations right now.</Text>
           )}
         </ScrollView>
 
@@ -382,6 +394,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#002D5B',
     marginBottom: 10
+  },
+  aiReasonBox: { 
+    backgroundColor: '#F0F4FF', 
+    padding: 10, 
+    borderRadius: 8, 
+    marginBottom: 12, 
+    borderLeftWidth: 3, 
+    borderLeftColor: '#F28C28' 
+  },
+  aiReasonText: { 
+    fontSize: 13, 
+    color: '#002D5B', 
+    fontStyle: 'italic',
+    lineHeight: 18 
   },
   infoRow: {
     flexDirection: 'row',

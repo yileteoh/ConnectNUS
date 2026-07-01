@@ -3,6 +3,7 @@ const {
   createGroupConversation, addUserToGroupConversation,
   removeUserFromGroupConversation, deleteGroupConversation,
 } = require('./chatController');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Create a new event/study group post
 exports.createEvent = async (req, res) => {
@@ -386,5 +387,78 @@ exports.updateEvent = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.getAIRecommendedEvents = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+    const userData = userDoc.data();
+
+    const eventsSnapshot = await db.collection('events').where('status', '==', 'open').get();
+    let availableEvents = eventsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    availableEvents = availableEvents.filter(e => 
+      e.creatorId !== userId && !(e.attendees || []).includes(userId)
+    );
+
+    if (availableEvents.length === 0) {
+      return res.status(200).json({ status: 'success', data: [] });
+    }
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: { responseMimeType: "application/json" }
+    });
+
+    const prompt = `
+      You are an intelligent event recommendation engine for ConnectNUS.
+      Here is the User Profile:
+      - Name: ${userData.name || 'Student'}
+      - Faculty: ${userData.faculty || 'Unknown'}
+      - Interests/Tags: ${(userData.interests || []).join(', ')}
+
+      Here is the list of available events (JSON format):
+      ${JSON.stringify(availableEvents.map(e => ({ id: e.id, title: e.title, category: e.category, description: e.description })))}
+
+      Task: Select the top 10 events that best match this user's profile.
+      For each event, write a personalized 1-sentence reason (under 15 words) explaining why they should join, addressing the user directly (e.g., "Since you love tech...").
+
+      You MUST return ONLY a JSON array in the exact format below:
+      [
+        {
+          "eventId": "event_id_here",
+          "aiReason": "Your personalized 1-sentence reason here"
+        }
+      ]
+    `;
+
+    const result = await model.generateContent(prompt);
+    let rawText = result.response.text();
+    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const aiRecommendations = JSON.parse(rawText);
+
+    const finalData = aiRecommendations.map(rec => {
+      const fullEventData = availableEvents.find(e => e.id === rec.eventId);
+      return { 
+        ...fullEventData, 
+        aiReason: rec.aiReason
+      };
+    }).filter(e => e.id);
+
+    return res.status(200).json({
+      status: 'success',
+      data: finalData
+    });
+
+  } catch (error) {
+    console.error('AI Recommendation Error:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to generate AI recommendations.' });
   }
 };
