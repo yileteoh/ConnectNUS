@@ -106,7 +106,7 @@ export default function EventDetailsScreen() {
       [
         { text: 'Keep', style: 'cancel' },
         {
-          text: 'Cancel',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
