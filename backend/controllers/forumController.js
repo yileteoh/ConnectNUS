@@ -1,4 +1,5 @@
 const { admin, db } = require('../config/firebase');
+const badgeService = require('../utils/badgeService');
 
 // Create a new forum discussion thread
 exports.createPost = async (req, res) => {
@@ -86,10 +87,17 @@ exports.toggleLike = async (req, res) => {
     const isLiked = likes.includes(userId);
 
     await postRef.update({
-      likes: isLiked 
+      likes: isLiked
         ? admin.firestore.FieldValue.arrayRemove(userId)
         : admin.firestore.FieldValue.arrayUnion(userId)
     });
+
+    // Award progress toward the Popular Poster badge when a like is newly added (not removed).
+    if (!isLiked) {
+      try {
+        await badgeService.awardProgress(postDoc.data().creatorId, 'likesReceived');
+      } catch (e) { console.error('awardProgress (post like) failed:', e); }
+    }
 
     return res.status(200).json({ status: 'success', message: 'Like toggled' });
   } catch (error) {
@@ -279,10 +287,17 @@ exports.toggleCommentLike = async (req, res) => {
 
     // Toggle logic: if already liked, remove. If not, add.
     await commentRef.update({
-      likes: isLiked 
+      likes: isLiked
         ? admin.firestore.FieldValue.arrayRemove(userId)
         : admin.firestore.FieldValue.arrayUnion(userId)
     });
+
+    // Award progress toward the Popular Poster badge when a like is newly added (not removed).
+    if (!isLiked) {
+      try {
+        await badgeService.awardProgress(doc.data().userId, 'likesReceived');
+      } catch (e) { console.error('awardProgress (comment like) failed:', e); }
+    }
 
     return res.status(200).json({ status: 'success', message: 'Comment like toggled' });
   } catch (error) { 
