@@ -1,6 +1,7 @@
 // backend/cronJobs.js
 const cron = require('node-cron');
 const admin = require('firebase-admin');
+const badgeService = require('./utils/badgeService');
 
 const db = admin.firestore();
 
@@ -117,6 +118,34 @@ const startAllCronJobs = () => {
       console.log(`[CRON] Sent buddy nudges to ${usersToNotify.size} users.`);
     } catch (error) {
       console.error('[CRON] Buddy Nudge Error:', error);
+    }
+  });
+
+  // Accrues one day of Buddy Mentor progress for the senior partner of every active buddy
+  // pairing. Cumulative and gated by real elapsed time, so it can't be farmed by re-matching.
+  cron.schedule('0 3 * * *', async () => {
+    console.log('[CRON] Running Buddy Mentor Duration Accrual Job...');
+    try {
+      const usersSnapshot = await db.collection('users').get();
+      const usersById = new Map();
+      usersSnapshot.forEach((doc) => usersById.set(doc.id, doc.data()));
+
+      const accrualTasks = [];
+      usersById.forEach((userData, uid) => {
+        const buddyId = userData.currentBuddyId;
+        if (!buddyId || !usersById.has(buddyId)) return;
+
+        const buddyData = usersById.get(buddyId);
+        const seniorPartner = badgeService.getSeniorPartner(uid, userData.year, buddyId, buddyData.year);
+        if (seniorPartner && seniorPartner.seniorId === uid) {
+          accrualTasks.push(badgeService.awardProgress(uid, 'buddyMentorDays', 1));
+        }
+      });
+
+      await Promise.all(accrualTasks);
+      console.log(`[CRON] Accrued Buddy Mentor progress for ${accrualTasks.length} users.`);
+    } catch (error) {
+      console.error('[CRON] Buddy Mentor Accrual Error:', error);
     }
   });
 

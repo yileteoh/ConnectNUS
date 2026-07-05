@@ -178,4 +178,81 @@ describe('Badge awarding', () => {
       ]);
     });
   });
+
+  describe('Buddy Bonder (one-time, junior/mentee side)', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+    });
+
+    test('junior partner gets Buddy Bonder (and buddySince is set) when years differ', async () => {
+      loadAppWithSeed({
+        'users/senior-1': { name: 'Senior', year: 'Year 3', badges: [] },
+        'users/junior-1': { name: 'Junior', year: 'Year 1', badges: [] },
+        'buddyRequests/req-1': { senderId: 'senior-1', receiverId: 'junior-1', status: 'pending' }
+      });
+
+      const response = await request(app)
+        .put('/api/buddy/accept')
+        .send({ requestId: 'req-1', senderId: 'senior-1', receiverId: 'junior-1' });
+
+      expect(response.statusCode).toBe(200);
+
+      const juniorDoc = await mockDb.collection('users').doc('junior-1').get();
+      expect(juniorDoc.data().badges).toEqual([
+        expect.objectContaining({ category: 'buddyBonder', tier: null, name: 'Buddy Bonder' })
+      ]);
+      expect(juniorDoc.data().buddySince).toBeDefined();
+
+      const seniorDoc = await mockDb.collection('users').doc('senior-1').get();
+      expect(seniorDoc.data().badges).toEqual([]);
+      expect(seniorDoc.data().buddySince).toBeDefined();
+    });
+
+    test('both partners get Buddy Bonder when years are equal (no senior/junior split)', async () => {
+      loadAppWithSeed({
+        'users/a-1': { name: 'A', year: 'Year 2', badges: [] },
+        'users/b-1': { name: 'B', year: 'Year 2', badges: [] },
+        'buddyRequests/req-2': { senderId: 'a-1', receiverId: 'b-1', status: 'pending' }
+      });
+
+      const response = await request(app)
+        .put('/api/buddy/accept')
+        .send({ requestId: 'req-2', senderId: 'a-1', receiverId: 'b-1' });
+
+      expect(response.statusCode).toBe(200);
+
+      const aDoc = await mockDb.collection('users').doc('a-1').get();
+      const bDoc = await mockDb.collection('users').doc('b-1').get();
+      expect(aDoc.data().badges).toEqual([expect.objectContaining({ category: 'buddyBonder' })]);
+      expect(bDoc.data().badges).toEqual([expect.objectContaining({ category: 'buddyBonder' })]);
+    });
+  });
+
+  describe('Buddy Mentor (duration) - core mechanism', () => {
+    test('getSeniorPartner ranks by YEAR_OPTIONS seniority and returns null on a tie', () => {
+      loadAppWithSeed({});
+      const badgeService = require('../utils/badgeService');
+
+      expect(badgeService.getSeniorPartner('a', 'Year 1', 'b', 'Year 3')).toEqual({ seniorId: 'b', juniorId: 'a' });
+      expect(badgeService.getSeniorPartner('a', 'Graduate', 'b', 'Year 5+')).toEqual({ seniorId: 'a', juniorId: 'b' });
+      expect(badgeService.getSeniorPartner('a', 'Year 2', 'b', 'Year 2')).toBeNull();
+    });
+
+    test('awardProgress accumulates buddyMentorDays and crosses the bronze tier at 7 days (the mechanism the daily cron job drives)', async () => {
+      global.fetch = jest.fn();
+      loadAppWithSeed({
+        'users/senior-1': { badgeCounts: { buddyMentorDays: 6 }, badges: [] }
+      });
+      const badgeService = require('../utils/badgeService');
+
+      const unlocked = await badgeService.awardProgress('senior-1', 'buddyMentorDays', 1);
+
+      expect(unlocked).toEqual([
+        expect.objectContaining({ category: 'buddyMentorDays', tier: 'bronze', name: 'Buddy Mentor' })
+      ]);
+
+      const doc = await mockDb.collection('users').doc('senior-1').get();
+      expect(doc.data().badgeCounts.buddyMentorDays).toBe(7);
+    });
+  });
 });
