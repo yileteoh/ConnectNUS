@@ -122,4 +122,60 @@ describe('Badge awarding', () => {
       expect(creatorDoc.exists).toBe(false);
     });
   });
+
+  describe('Event Explorer (attendance)', () => {
+    const futureIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      loadAppWithSeed({
+        'users/host-1': { name: 'Host' },
+        'users/guest-1': { name: 'Guest', badgeCounts: { eventsAttended: 2 }, badges: [] },
+        'events/open-event': {
+          title: 'Study Session', category: 'Study', location: 'COM1', time: futureIso,
+          capacity: 5, creatorId: 'host-1', attendees: ['host-1'], status: 'open'
+        }
+      });
+    });
+
+    test('joining an event crosses the bronze threshold (3 events) and awards the badge', async () => {
+      const response = await request(app)
+        .put('/api/events/open-event/join')
+        .send({ userId: 'guest-1' });
+
+      expect(response.statusCode).toBe(200);
+
+      const guestDoc = await mockDb.collection('users').doc('guest-1').get();
+      expect(guestDoc.data().badgeCounts.eventsAttended).toBe(3);
+      expect(guestDoc.data().badges).toEqual([
+        expect.objectContaining({ category: 'eventsAttended', tier: 'bronze', name: 'Event Explorer' })
+      ]);
+    });
+  });
+
+  describe('Event Host (hosting)', () => {
+    const futureIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      loadAppWithSeed({
+        'users/host-1': { name: 'Host', badgeCounts: { eventsHosted: 0 }, badges: [] }
+      });
+    });
+
+    test('creating an event crosses the bronze threshold (1 event) and awards the badge', async () => {
+      const response = await request(app).post('/api/events').send({
+        title: 'Makan Jio', category: 'Food', location: 'Utown', time: futureIso,
+        capacity: '4', description: 'Dinner after class', creatorId: 'host-1'
+      });
+
+      expect(response.statusCode).toBe(201);
+
+      const hostDoc = await mockDb.collection('users').doc('host-1').get();
+      expect(hostDoc.data().badgeCounts.eventsHosted).toBe(1);
+      expect(hostDoc.data().badges).toEqual([
+        expect.objectContaining({ category: 'eventsHosted', tier: 'bronze', name: 'Event Host' })
+      ]);
+    });
+  });
 });
