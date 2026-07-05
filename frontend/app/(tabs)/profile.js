@@ -284,7 +284,7 @@ const getPlatformConfig = (url) => {
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeading}>My Badges</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/badges')}>
             <Text style={styles.viewAllText}>View All</Text>
           </TouchableOpacity>
         </View>

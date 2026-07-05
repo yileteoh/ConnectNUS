@@ -13,6 +13,7 @@ export const BADGE_CATEGORIES = [
   {
     key: 'likesReceived',
     name: 'Popular Poster',
+    description: 'Earned by getting likes on your forum posts and comments.',
     iconLib: 'FontAwesome5',
     icon: 'thumbs-up',
     tiers: [
@@ -24,6 +25,7 @@ export const BADGE_CATEGORIES = [
   {
     key: 'eventsAttended',
     name: 'Event Explorer',
+    description: 'Earned by joining events and study sessions.',
     iconLib: 'Ionicons',
     icon: 'compass',
     tiers: [
@@ -35,6 +37,7 @@ export const BADGE_CATEGORIES = [
   {
     key: 'eventsHosted',
     name: 'Event Host',
+    description: 'Earned by creating your own events and study sessions.',
     iconLib: 'Ionicons',
     icon: 'calendar',
     tiers: [
@@ -46,6 +49,7 @@ export const BADGE_CATEGORIES = [
   {
     key: 'buddyMentorDays',
     name: 'Buddy Mentor',
+    description: 'Earned as the more senior partner in a buddy pairing, by the cumulative number of days paired.',
     iconLib: 'FontAwesome5',
     icon: 'medal',
     tiers: [
@@ -57,6 +61,7 @@ export const BADGE_CATEGORIES = [
   {
     key: 'buddyBonder',
     name: 'Buddy Bonder',
+    description: 'Earned the first time you successfully match with a buddy.',
     iconLib: 'Ionicons',
     icon: 'people',
     tiers: [], // one-time badge, no thresholds
