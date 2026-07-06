@@ -295,7 +295,12 @@ const getPlatformConfig = (url) => {
             const colors = TIER_COLORS[unlockedTier === 'unlocked' ? 'gold' : unlockedTier] || TIER_COLORS.locked;
             const IconComponent = BADGE_ICON_LIBS[category.iconLib];
             return (
-              <View style={styles.badgeItem} key={category.key}>
+              <TouchableOpacity
+                style={styles.badgeItem}
+                key={category.key}
+                onPress={() => router.push('/badges')}
+                activeOpacity={0.7}
+              >
                 <View style={[styles.badgeCircle, { borderColor: colors.border, backgroundColor: colors.background }]}>
                   <IconComponent name={category.icon} size={24} color={colors.icon} />
                 </View>
@@ -303,7 +308,7 @@ const getPlatformConfig = (url) => {
                 <Text style={styles.badgeProgressText}>
                   {getProgressText(category, profile?.badgeCounts || {}, unlockedTier)}
                 </Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
