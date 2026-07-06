@@ -170,7 +170,7 @@ const setUnreadForParticipants = async (conversationId, senderId) => {
       }
     });
     if (Object.keys(updateData).length > 0) await convRef.update(updateData);
-  } catch (e) {}
+  } catch (e) { console.error('setUnreadForParticipants failed:', e); }
 };
 
 // POST /api/chat/group/:eventId — creates the group conversation if missing, adds caller to participants
