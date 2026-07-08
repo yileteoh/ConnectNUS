@@ -21,6 +21,9 @@ import Header from '../../components/Header';
 import { auth } from '../../firebaseConfig';
 import { getUserProfile } from '../../services/profileService';
 import { fetchGlobalEvents } from '../../services/eventService';
+import { BADGE_CATEGORIES, TIER_COLORS, getUnlockedTier, getProgressText } from '../../constants/badges';
+
+const BADGE_ICON_LIBS = { FontAwesome5, Ionicons, MaterialCommunityIcons };
 
 const formatRelativeTime = (isoString) => {
   if (!isoString) return '';
@@ -281,30 +284,33 @@ const getPlatformConfig = (url) => {
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeading}>My Badges</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/badges')}>
             <Text style={styles.viewAllText}>View All</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
-          <View style={styles.badgeItem}>
-            <View style={[styles.badgeCircle, { borderColor: '#F28C28', backgroundColor: '#FFF5EB' }]}>
-              <FontAwesome5 name="medal" size={24} color="#A04000" />
-            </View>
-            <Text style={styles.badgeLabel}>Top Mentor</Text>
-          </View>
-          <View style={styles.badgeItem}>
-            <View style={[styles.badgeCircle, { borderColor: '#002D5B', backgroundColor: '#EBF4FA' }]}>
-              <Ionicons name="book" size={24} color="#002D5B" />
-            </View>
-            <Text style={styles.badgeLabel}>Resource King</Text>
-          </View>
-          <View style={styles.badgeItem}>
-            <View style={[styles.badgeCircle, { borderColor: '#CCC', backgroundColor: '#F9F9F9' }]}>
-              <Ionicons name="calendar" size={24} color="#666" />
-            </View>
-            <Text style={styles.badgeLabel}>Early Bird</Text>
-          </View>
+          {BADGE_CATEGORIES.map((category) => {
+            const unlockedTier = getUnlockedTier(category.key, profile?.badges || []);
+            const colors = TIER_COLORS[unlockedTier === 'unlocked' ? 'gold' : unlockedTier] || TIER_COLORS.locked;
+            const IconComponent = BADGE_ICON_LIBS[category.iconLib];
+            return (
+              <TouchableOpacity
+                style={styles.badgeItem}
+                key={category.key}
+                onPress={() => router.push('/badges')}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.badgeCircle, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                  <IconComponent name={category.icon} size={24} color={colors.icon} />
+                </View>
+                <Text style={styles.badgeLabel}>{category.name}</Text>
+                <Text style={styles.badgeProgressText}>
+                  {getProgressText(category, profile?.badgeCounts || {}, unlockedTier)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         <Text style={styles.sectionHeading}>Past Sessions</Text>
@@ -617,7 +623,7 @@ const styles = StyleSheet.create({
   badgeItem: {
     alignItems: 'center',
     marginRight: 20,
-    width: 70,
+    width: 80,
   },
   badgeCircle: {
     width: 60,
@@ -633,6 +639,12 @@ const styles = StyleSheet.create({
     color: '#444',
     textAlign: 'center',
     fontWeight: '500',
+  },
+  badgeProgressText: {
+    fontSize: 9,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 2,
   },
   listCard: {
     backgroundColor: '#FFFFFF',

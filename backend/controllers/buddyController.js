@@ -1,4 +1,5 @@
 const { admin, db } = require('../config/firebase');
+const badgeService = require('../utils/badgeService');
 
 // Get Personalized Recommendations
 const getRecommendations = async (req, res) => {
@@ -89,11 +90,12 @@ const sendBuddyRequest = async (req, res) => {
 const acceptBuddyRequest = async (req, res) => {
   try {
     const { requestId, senderId, receiverId } = req.body;
+    let senderYear, receiverYear;
 
     await db.runTransaction(async (transaction) => {
       const senderRef = db.collection('users').doc(senderId);
       const receiverRef = db.collection('users').doc(receiverId);
-      
+
       const senderDoc = await transaction.get(senderRef);
       const receiverDoc = await transaction.get(receiverRef);
 
@@ -102,14 +104,28 @@ const acceptBuddyRequest = async (req, res) => {
         throw new Error("One of the users already has a buddy.");
       }
 
+      senderYear = senderDoc.data().year;
+      receiverYear = receiverDoc.data().year;
+
       // Bind them together!
-      transaction.update(senderRef, { currentBuddyId: receiverId });
-      transaction.update(receiverRef, { currentBuddyId: senderId });
+      transaction.update(senderRef, { currentBuddyId: receiverId, buddySince: admin.firestore.FieldValue.serverTimestamp() });
+      transaction.update(receiverRef, { currentBuddyId: senderId, buddySince: admin.firestore.FieldValue.serverTimestamp() });
 
       // Mark request as accepted
       const requestRef = db.collection('buddyRequests').doc(requestId);
       transaction.update(requestRef, { status: 'accepted' });
     });
+
+    // Award the one-time Buddy Bonder badge to the junior partner (or both, if same year)
+    try {
+      const seniorPartner = badgeService.getSeniorPartner(senderId, senderYear, receiverId, receiverYear);
+      if (seniorPartner) {
+        await badgeService.unlockOnce(seniorPartner.juniorId, 'buddyBonder');
+      } else {
+        await badgeService.unlockOnce(senderId, 'buddyBonder');
+        await badgeService.unlockOnce(receiverId, 'buddyBonder');
+      }
+    } catch (e) { console.error('unlockOnce (buddy bonder) failed:', e); }
 
     const cleanupRequests = async (uid) => {
       const batch = db.batch();
@@ -137,9 +153,15 @@ const removeBuddy = async (req, res) => {
   try {
     const { userId, buddyId } = req.body;
 
-    // Remove the linkage
-    await db.collection('users').doc(userId).update({ currentBuddyId: admin.firestore.FieldValue.delete() });
-    await db.collection('users').doc(buddyId).update({ currentBuddyId: admin.firestore.FieldValue.delete() });
+    // Remove the linkage (also clears buddySince, which stops daily Buddy Mentor accrual for this pairing)
+    await db.collection('users').doc(userId).update({
+      currentBuddyId: admin.firestore.FieldValue.delete(),
+      buddySince: admin.firestore.FieldValue.delete()
+    });
+    await db.collection('users').doc(buddyId).update({
+      currentBuddyId: admin.firestore.FieldValue.delete(),
+      buddySince: admin.firestore.FieldValue.delete()
+    });
 
     return res.status(200).json({ status: 'success', message: 'Buddy relationship dissolved.' });
   } catch (error) {
