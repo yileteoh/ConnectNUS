@@ -105,4 +105,43 @@ describe('Points awarding', () => {
       expect(authorDoc.data().points).toBe(3);
     });
   });
+
+  describe('Event attendance and hosting', () => {
+    const futureIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      loadAppWithSeed({
+        'users/host-1': { name: 'Host', points: 0 },
+        'users/guest-1': { name: 'Guest', points: 0 },
+        'events/open-event': {
+          title: 'Study Session', category: 'Study', location: 'COM1', time: futureIso,
+          capacity: 5, creatorId: 'host-1', attendees: ['host-1'], status: 'open'
+        }
+      });
+    });
+
+    test('joining an event awards eventAttended points', async () => {
+      const response = await request(app)
+        .put('/api/events/open-event/join')
+        .send({ userId: 'guest-1' });
+
+      expect(response.statusCode).toBe(200);
+
+      const guestDoc = await mockDb.collection('users').doc('guest-1').get();
+      expect(guestDoc.data().points).toBe(10);
+    });
+
+    test('creating an event awards eventHosted points', async () => {
+      const response = await request(app).post('/api/events').send({
+        title: 'Makan Jio', category: 'Food', location: 'Utown', time: futureIso,
+        capacity: '4', description: 'Dinner after class', creatorId: 'host-1'
+      });
+
+      expect(response.statusCode).toBe(201);
+
+      const hostDoc = await mockDb.collection('users').doc('host-1').get();
+      expect(hostDoc.data().points).toBe(15);
+    });
+  });
 });

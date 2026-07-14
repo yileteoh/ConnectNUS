@@ -205,6 +205,36 @@ const getPlatformConfig = (url) => {
           </View>
         </View>
 
+        {(() => {
+          const levelInfo = getLevel(profile.points || 0);
+          return (
+            <View style={styles.levelCard}>
+              <View style={styles.levelBadgeCircle}>
+                <Text style={styles.levelBadgeNumber}>{levelInfo.level}</Text>
+              </View>
+              <View style={styles.levelInfoColumn}>
+                <View style={styles.levelHeaderRow}>
+                  <Text style={styles.levelTitle}>{levelInfo.title}</Text>
+                  <View style={styles.levelPointsChip}>
+                    <Ionicons name="star" size={12} color="#F28C28" />
+                    <Text style={styles.levelPointsChipText}>{profile.points || 0}</Text>
+                  </View>
+                </View>
+                <View style={styles.levelBarTrack}>
+                  <View style={[styles.levelBarFill, { width: `${levelInfo.progress * 100}%` }]} />
+                </View>
+                {levelInfo.nextLevel ? (
+                  <Text style={styles.levelNextText}>
+                    {levelInfo.nextLevel.threshold - (profile.points || 0)} pts to {levelInfo.nextLevel.title}
+                  </Text>
+                ) : (
+                  <Text style={styles.levelNextText}>Max level reached!</Text>
+                )}
+              </View>
+            </View>
+          );
+        })()}
+
         <Text style={styles.sectionHeading}>Academic Profile</Text>
         <View style={styles.academicCard}>
           <Text style={styles.interestsLabel}>MODULES</Text>
@@ -269,28 +299,6 @@ const getPlatformConfig = (url) => {
             ) : null}
           </View>
         ) : null}
-
-        {(() => {
-          const levelInfo = getLevel(profile.points || 0);
-          return (
-            <View style={styles.levelCard}>
-              <View style={styles.levelHeaderRow}>
-                <Text style={styles.levelTitle}>Level {levelInfo.level} · {levelInfo.title}</Text>
-                <Text style={styles.levelPoints}>{profile.points || 0} pts</Text>
-              </View>
-              <View style={styles.levelBarTrack}>
-                <View style={[styles.levelBarFill, { width: `${levelInfo.progress * 100}%` }]} />
-              </View>
-              {levelInfo.nextLevel ? (
-                <Text style={styles.levelNextText}>
-                  {levelInfo.nextLevel.threshold - (profile.points || 0)} pts to {levelInfo.nextLevel.title}
-                </Text>
-              ) : (
-                <Text style={styles.levelNextText}>Max level reached!</Text>
-              )}
-            </View>
-          );
-        })()}
 
         <View style={styles.statsRow}>
           <View style={styles.statCardDark}>
@@ -600,12 +608,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   levelCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#002D5B',
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  levelBadgeCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F28C28',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  levelBadgeNumber: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  levelInfoColumn: {
+    flex: 1,
   },
   levelHeaderRow: {
     flexDirection: 'row',
@@ -614,29 +646,38 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   levelTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: 'bold',
-    color: '#002D5B',
+    color: '#FFF',
   },
-  levelPoints: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F28C28',
+  levelPointsChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  levelPointsChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+    marginLeft: 4,
   },
   levelBarTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EEE',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     overflow: 'hidden',
   },
   levelBarFill: {
-    height: 8,
-    borderRadius: 4,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#F28C28',
   },
   levelNextText: {
     fontSize: 11,
-    color: '#999',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 6,
   },
   statsRow: {
