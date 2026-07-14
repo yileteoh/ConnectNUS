@@ -22,6 +22,7 @@ import { auth } from '../../firebaseConfig';
 import { getUserProfile } from '../../services/profileService';
 import { fetchGlobalEvents } from '../../services/eventService';
 import { BADGE_CATEGORIES, TIER_COLORS, getUnlockedTier, getProgressText } from '../../constants/badges';
+import { getLevel } from '../../constants/points';
 
 const BADGE_ICON_LIBS = { FontAwesome5, Ionicons, MaterialCommunityIcons };
 
@@ -268,6 +269,28 @@ const getPlatformConfig = (url) => {
             ) : null}
           </View>
         ) : null}
+
+        {(() => {
+          const levelInfo = getLevel(profile.points || 0);
+          return (
+            <View style={styles.levelCard}>
+              <View style={styles.levelHeaderRow}>
+                <Text style={styles.levelTitle}>Level {levelInfo.level} · {levelInfo.title}</Text>
+                <Text style={styles.levelPoints}>{profile.points || 0} pts</Text>
+              </View>
+              <View style={styles.levelBarTrack}>
+                <View style={[styles.levelBarFill, { width: `${levelInfo.progress * 100}%` }]} />
+              </View>
+              {levelInfo.nextLevel ? (
+                <Text style={styles.levelNextText}>
+                  {levelInfo.nextLevel.threshold - (profile.points || 0)} pts to {levelInfo.nextLevel.title}
+                </Text>
+              ) : (
+                <Text style={styles.levelNextText}>Max level reached!</Text>
+              )}
+            </View>
+          );
+        })()}
 
         <View style={styles.statsRow}>
           <View style={styles.statCardDark}>
@@ -575,6 +598,46 @@ const styles = StyleSheet.create({
     color: '#002D5B',
     fontSize: 14,
     fontWeight: '600',
+  },
+  levelCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+  },
+  levelHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  levelTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#002D5B',
+  },
+  levelPoints: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F28C28',
+  },
+  levelBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EEE',
+    overflow: 'hidden',
+  },
+  levelBarFill: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F28C28',
+  },
+  levelNextText: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 6,
   },
   statsRow: {
     flexDirection: 'row',
