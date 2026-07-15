@@ -144,4 +144,99 @@ describe('Points awarding', () => {
       expect(hostDoc.data().points).toBe(15);
     });
   });
+
+  describe('Buddy match (one-time per user)', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      loadAppWithSeed({
+        'users/a-1': { name: 'A', year: 'Year 2', points: 0 },
+        'users/b-1': { name: 'B', year: 'Year 2', points: 0 },
+        'buddyRequests/req-1': { senderId: 'a-1', receiverId: 'b-1', status: 'pending' }
+      });
+    });
+
+    test('accepting a buddy request awards buddyMatched points to both parties, once', async () => {
+      const response = await request(app)
+        .put('/api/buddy/accept')
+        .send({ requestId: 'req-1', senderId: 'a-1', receiverId: 'b-1' });
+
+      expect(response.statusCode).toBe(200);
+
+      const aDoc = await mockDb.collection('users').doc('a-1').get();
+      const bDoc = await mockDb.collection('users').doc('b-1').get();
+      expect(aDoc.data().points).toBe(25);
+      expect(bDoc.data().points).toBe(25);
+      expect(aDoc.data().pointsAwardedOnce).toEqual(['buddyMatched']);
+
+      // Directly calling awardPointsOnce again with the same onceKey (simulating a second
+      // match after a breakup) must not award points a second time.
+      const pointsService = require('../utils/pointsService');
+      const awardedAgain = await pointsService.awardPointsOnce('a-1', 'buddyMatched', 'buddyMatched');
+      expect(awardedAgain).toBe(false);
+
+      const aDocAfter = await mockDb.collection('users').doc('a-1').get();
+      expect(aDocAfter.data().points).toBe(25);
+    });
+  });
+
+  describe('Profile setup completion (one-time)', () => {
+    const validPayload = {
+      userId: 'user-1', name: 'Ava', faculty: 'Computing', year: 'Year 2',
+      modules: ['CS2103T'], interests: ['AI']
+    };
+
+    test('completing profile setup for the first time awards profileSetupComplete points', async () => {
+      global.fetch = jest.fn();
+      loadAppWithSeed({
+        'users/user-1': { email: 'user1@u.nus.edu', setupComplete: false, points: 0 }
+      });
+
+      const response = await request(app).put('/api/profile').send(validPayload);
+
+      expect(response.statusCode).toBe(200);
+
+      const userDoc = await mockDb.collection('users').doc('user-1').get();
+      expect(userDoc.data().points).toBe(10);
+      expect(userDoc.data().pointsAwardedOnce).toEqual(['profileSetupComplete']);
+    });
+
+    test('editing an already-complete profile does not re-award setup points', async () => {
+      global.fetch = jest.fn();
+      loadAppWithSeed({
+        'users/user-1': { email: 'user1@u.nus.edu', setupComplete: true, points: 10, pointsAwardedOnce: ['profileSetupComplete'] }
+      });
+
+      const response = await request(app).put('/api/profile').send(validPayload);
+
+      expect(response.statusCode).toBe(200);
+
+      const userDoc = await mockDb.collection('users').doc('user-1').get();
+      expect(userDoc.data().points).toBe(10);
+    });
+  });
+
+  describe('First chat message per conversation (one-time)', () => {
+    test('sending the first message in a conversation awards chatFirstMessage points once', async () => {
+      global.fetch = jest.fn();
+      loadAppWithSeed({
+        'users/sender-1': { name: 'Sender', points: 0 },
+        // Single participant on purpose: saveMessage's unread-count increment (FieldValue.increment)
+        // isn't mocked in this test file, and only runs for OTHER participants besides the sender.
+        'conversations/conv-1': { participants: ['sender-1'] }
+      });
+      const chatController = require('../controllers/chatController');
+
+      await chatController.saveMessage('conv-1', 'sender-1', 'Hello!');
+
+      const senderDoc = await mockDb.collection('users').doc('sender-1').get();
+      expect(senderDoc.data().points).toBe(1);
+      expect(senderDoc.data().pointsAwardedOnce).toEqual(['chatStarted_conv-1']);
+
+      // A second message in the same conversation should not award points again.
+      await chatController.saveMessage('conv-1', 'sender-1', 'Second message');
+
+      const senderDocAfter = await mockDb.collection('users').doc('sender-1').get();
+      expect(senderDocAfter.data().points).toBe(1);
+    });
+  });
 });

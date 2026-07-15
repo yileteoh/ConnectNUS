@@ -1,4 +1,5 @@
 const { admin, db } = require('../config/firebase');
+const pointsService = require('../utils/pointsService');
 
 const isValidHttpUrl = (value) => {
   if (!value) return true;
@@ -62,8 +63,13 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    const finalizedAvatarUrl = (profilePicUrl && typeof profilePicUrl === 'string') 
+    const finalizedAvatarUrl = (profilePicUrl && typeof profilePicUrl === 'string')
       ? profilePicUrl.trim() : '';
+
+    // Read the prior setupComplete value so we can tell a first-time completion
+    // (false/absent -> true) apart from a later edit of an already-complete profile.
+    const existingDoc = await db.collection('users').doc(userId).get();
+    const wasSetupComplete = existingDoc.exists && existingDoc.data().setupComplete === true;
 
     // Prepare profile data object
     const profileData = {
@@ -79,8 +85,15 @@ exports.updateProfile = async (req, res) => {
     };
 
     // Save or update document in 'users' collection using userId as Document ID
-    // CRITICAL: { merge: true } ensures we don't delete the 'email' and 'createdAt' fields created during /api/register
+    // { merge: true } ensures we don't delete the 'email' and 'createdAt' fields created during /api/register
     await db.collection('users').doc(userId).set(profileData, { merge: true });
+
+    // Award one-time points the first time setup is actually completed (not on later edits)
+    if (!wasSetupComplete) {
+      try {
+        await pointsService.awardPointsOnce(userId, 'profileSetupComplete');
+      } catch (e) { console.error('awardPointsOnce (profile setup) failed:', e); }
+    }
 
     return res.status(200).json({
       status: 'success',
