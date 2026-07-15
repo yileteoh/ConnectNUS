@@ -1,5 +1,6 @@
 const { admin, db } = require('../config/firebase');
 const badgeService = require('../utils/badgeService');
+const pointsService = require('../utils/pointsService');
 
 // Create a new forum discussion thread
 exports.createPost = async (req, res) => {
@@ -18,6 +19,12 @@ exports.createPost = async (req, res) => {
     };
 
     const docRef = await db.collection('forums').add(newPost);
+
+    // Award points for creating a forum post
+    try {
+      await pointsService.awardPoints(creatorId, 'forumPostCreated');
+    } catch (e) { console.error('awardPoints (forum post created) failed:', e); }
+
     return res.status(201).json({ status: 'success', data: { id: docRef.id, ...newPost } });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
@@ -92,11 +99,14 @@ exports.toggleLike = async (req, res) => {
         : admin.firestore.FieldValue.arrayUnion(userId)
     });
 
-    // Award progress toward the Popular Poster badge when a like is newly added (not removed).
+    // Award progress toward the Popular Poster badge and points when a like is newly added (not removed).
     if (!isLiked) {
       try {
         await badgeService.awardProgress(postDoc.data().creatorId, 'likesReceived');
       } catch (e) { console.error('awardProgress (post like) failed:', e); }
+      try {
+        await pointsService.awardPoints(postDoc.data().creatorId, 'likeReceived');
+      } catch (e) { console.error('awardPoints (post like) failed:', e); }
     }
 
     return res.status(200).json({ status: 'success', message: 'Like toggled' });
@@ -202,7 +212,12 @@ exports.createComment = async (req, res) => {
     };
 
     const commentRef = await db.collection('forums').doc(postId).collection('comments').add(newComment);
-    
+
+    // Award points for creating a forum comment
+    try {
+      await pointsService.awardPoints(userId, 'forumCommentCreated');
+    } catch (e) { console.error('awardPoints (forum comment created) failed:', e); }
+
     return res.status(201).json({ status: 'success', data: { id: commentRef.id, ...newComment } });
   } catch (error) {
     return res.status(500).json({ status: 'error', message: error.message });
@@ -292,11 +307,14 @@ exports.toggleCommentLike = async (req, res) => {
         : admin.firestore.FieldValue.arrayUnion(userId)
     });
 
-    // Award progress toward the Popular Poster badge when a like is newly added (not removed).
+    // Award progress toward the Popular Poster badge and points when a like is newly added (not removed).
     if (!isLiked) {
       try {
         await badgeService.awardProgress(doc.data().userId, 'likesReceived');
       } catch (e) { console.error('awardProgress (comment like) failed:', e); }
+      try {
+        await pointsService.awardPoints(doc.data().userId, 'likeReceived');
+      } catch (e) { console.error('awardPoints (comment like) failed:', e); }
     }
 
     return res.status(200).json({ status: 'success', message: 'Comment like toggled' });

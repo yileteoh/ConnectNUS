@@ -1,4 +1,5 @@
 const { admin, db } = require('../config/firebase');
+const pointsService = require('../utils/pointsService');
 
 // Helper: build a deterministic conversation ID from two user IDs by sorting to ensure same string is returned
 const buildConversationId = (uid1, uid2) => [uid1, uid2].sort().join('_');
@@ -131,6 +132,12 @@ const saveMessage = async (conversationId, senderId, text, type = 'text', imageU
   if (Object.keys(unreadUpdate).length > 0) {
     await convRef.update(unreadUpdate).catch(() => {});
   }
+
+  // Award one-time points for starting to use a conversation (first message in it, not
+  // per message sent, to avoid rewarding raw message spam)
+  try {
+    await pointsService.awardPointsOnce(senderId, 'chatFirstMessage', `chatStarted_${conversationId}`);
+  } catch (e) { console.error('awardPointsOnce (chat first message) failed:', e); }
 
   return {
     messageId: msgDoc.id,

@@ -1,5 +1,6 @@
 const { admin, db } = require('../config/firebase');
 const badgeService = require('../utils/badgeService');
+const pointsService = require('../utils/pointsService');
 
 // Get Personalized Recommendations
 const getRecommendations = async (req, res) => {
@@ -126,6 +127,13 @@ const acceptBuddyRequest = async (req, res) => {
         await badgeService.unlockOnce(receiverId, 'buddyBonder');
       }
     } catch (e) { console.error('unlockOnce (buddy bonder) failed:', e); }
+
+    // Award one-time buddyMatched points to both parties (per user, not per match, so
+    // repeatedly breaking up and re-matching can't be used to farm points)
+    try {
+      await pointsService.awardPointsOnce(senderId, 'buddyMatched');
+      await pointsService.awardPointsOnce(receiverId, 'buddyMatched');
+    } catch (e) { console.error('awardPointsOnce (buddy matched) failed:', e); }
 
     const cleanupRequests = async (uid) => {
       const batch = db.batch();

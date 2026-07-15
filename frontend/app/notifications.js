@@ -78,6 +78,9 @@ export default function NotificationsScreen() {
       case 'badge':
         router.push('/(tabs)/profile');
         break;
+      case 'points':
+        router.push('/(tabs)/profile');
+        break;
       default:
         break;
     }
@@ -91,6 +94,7 @@ export default function NotificationsScreen() {
       case 'event_cancelled': return { name: 'calendar-clear', color: '#2E7D32' };
       case 'forum': return { name: 'megaphone', color: '#E53935' };
       case 'buddy': return { name: 'people', color: '#F28C28' };
+      case 'points': return { name: 'star', color: '#F28C28' };
       case 'badge': return { name: 'trophy', color: '#D4AF37' };
       default: return { name: 'notifications', color: '#666' };
     }

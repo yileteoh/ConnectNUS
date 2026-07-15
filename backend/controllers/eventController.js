@@ -5,6 +5,7 @@ const {
 } = require('./chatController');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const badgeService = require('../utils/badgeService');
+const pointsService = require('../utils/pointsService');
 
 // Create a new event/study group post
 exports.createEvent = async (req, res) => {
@@ -45,10 +46,13 @@ exports.createEvent = async (req, res) => {
       });
     } catch (e) { console.error('createGroupConversation failed:', e); }
 
-    // Award progress toward the Event Host badge
+    // Award progress toward the Event Host badge and points
     try {
       await badgeService.awardProgress(creatorId, 'eventsHosted');
     } catch (e) { console.error('awardProgress (event host) failed:', e); }
+    try {
+      await pointsService.awardPoints(creatorId, 'eventHosted');
+    } catch (e) { console.error('awardPoints (event host) failed:', e); }
 
     return res.status(201).json({
       status: 'success',
@@ -195,10 +199,13 @@ exports.joinEvent = async (req, res) => {
       });
     } catch (e) { console.error('addUserToGroupConversation failed:', e); }
 
-    // Award progress toward the Event Explorer badge
+    // Award progress toward the Event Explorer badge and points
     try {
       await badgeService.awardProgress(userId, 'eventsAttended');
     } catch (e) { console.error('awardProgress (event attended) failed:', e); }
+    try {
+      await pointsService.awardPoints(userId, 'eventAttended');
+    } catch (e) { console.error('awardPoints (event attended) failed:', e); }
 
     return res.status(200).json({ status: 'success', message: 'Successfully joined!' });
   } catch (error) {
