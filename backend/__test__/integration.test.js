@@ -48,17 +48,35 @@ describe('Milestone 1 API integration', () => {
     test('POST /api/register syncs a new user shell into Firestore', async () => {
       const response = await request(app)
         .post('/api/register')
-        .send({ uid: 'new-user', email: 'new@u.nus.edu' });
+        .send({ uid: 'new-user', email: 'e7654321@u.nus.edu' });
 
       expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
 
       const userDoc = await mockDb.collection('users').doc('new-user').get();
       expect(userDoc.data()).toMatchObject({
-        email: 'new@u.nus.edu',
+        email: 'e7654321@u.nus.edu',
         role: 'student',
         setupComplete: false
       });
+    });
+
+    test('POST /api/register rejects a non-NUS email', async () => {
+      const response = await request(app)
+        .post('/api/register')
+        .send({ uid: 'new-user', email: 'new@gmail.com' });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body.success).toBe(false);
+    });
+
+    test('POST /api/register rejects a missing uid', async () => {
+      const response = await request(app)
+        .post('/api/register')
+        .send({ email: 'e7654321@u.nus.edu' });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body.success).toBe(false);
     });
 
     test('PUT /api/profile validates required milestone profile fields', async () => {

@@ -1,5 +1,6 @@
 const { admin, db } = require('../config/firebase');
 const pointsService = require('../utils/pointsService');
+const { isValidNusEmail } = require('../utils/validation');
 
 const isValidHttpUrl = (value) => {
   if (!value) return true;
@@ -16,6 +17,13 @@ exports.registerUser = async (req, res) => {
     try {
         const { email, uid } = req.body; // Data sent from React Native
 
+        if (!uid || typeof uid !== 'string') {
+            return res.status(400).json({ success: false, error: 'A valid uid is required.' });
+        }
+        if (!isValidNusEmail(email)) {
+            return res.status(400).json({ success: false, error: 'A valid NUS student email is required.' });
+        }
+
         // Create a user profile document in Firestore
         await db.collection('users').doc(uid).set({
             email: email,
@@ -23,8 +31,6 @@ exports.registerUser = async (req, res) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             setupComplete: false // Placeholder for Feature 2: User Profile
         });
-
-        console.log(`Success: User ${email} synced to Firestore database.`);
         
         res.json({
             success: true,
@@ -162,8 +168,6 @@ exports.deleteProfile = async (req, res) => {
 
       // 2. Permanently delete the user's login account from Firebase Authentication using Admin SDK
       await admin.auth().deleteUser(userId);
-
-      console.log(`Success: Fully wiped data and credentials for user UID: ${userId}`);
 
       return res.status(200).json({ status: 'success', message: 'Account and data have been permanently erased.' });
     } catch (error) {

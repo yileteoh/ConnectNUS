@@ -1,5 +1,5 @@
 // backend/__tests__/unit.test.js
-const { isValidCapacity } = require('../utils/validation');
+const { isValidCapacity, isValidNusEmail } = require('../utils/validation');
 const { getRelativeTime } = require('../utils/timeFormatter');
 const { buildConversationId } = require('../controllers/chatController');
 
@@ -40,6 +40,24 @@ describe('Unit Testing', () => {
     test('should gracefully fallback to "Just now" for invalid/empty data', () => {
       expect(getRelativeTime(null)).toBe('Just now');
       expect(getRelativeTime("invalid-date-format")).toBe('Just now');
+    });
+  });
+
+  describe('isValidNusEmail', () => {
+    test('should return true for valid NUS student emails', () => {
+      expect(isValidNusEmail('e1234567@u.nus.edu')).toBe(true);
+      expect(isValidNusEmail('E1234567@u.nus.edu')).toBe(true); // case-insensitive prefix
+    });
+
+    test('should return false for non-NUS or malformed emails', () => {
+      expect(isValidNusEmail('e1234567@gmail.com')).toBe(false);
+      expect(isValidNusEmail('a1234567@u.nus.edu')).toBe(false);
+      expect(isValidNusEmail('e123456@u.nus.edu')).toBe(false); // wrong digit count
+    });
+
+    test('should return false for non-string input', () => {
+      expect(isValidNusEmail(null)).toBe(false);
+      expect(isValidNusEmail(undefined)).toBe(false);
     });
   });
 

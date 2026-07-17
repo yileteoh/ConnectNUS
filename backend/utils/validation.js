@@ -11,4 +11,14 @@ function isValidCapacity(capacity) {
   return num > 1;
 }
 
-module.exports = { isValidCapacity };
+/**
+ * Validates if the provided email follows the NUS student email format
+ * @param {any} email - The input email
+ * @returns {boolean} - True if valid, false otherwise
+ */
+function isValidNusEmail(email) {
+  if (typeof email !== 'string') return false;
+  return /^[eE]\d{7}@u\.nus\.edu$/.test(email);
+}
+
+module.exports = { isValidCapacity, isValidNusEmail };
