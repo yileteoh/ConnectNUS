@@ -6,11 +6,15 @@ import {
   Linking 
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getUserProfile } from '../../services/profileService';
 import { checkBuddyStatus, sendBuddyRequest, acceptBuddyRequest, removeBuddy, declineBuddyRequest } from '../../services/buddyService';
 import { auth } from '../../firebaseConfig';
 import { sendNotification } from '../../services/notificationHelper';
+import { BADGE_CATEGORIES, TIER_COLORS, getUnlockedTier, getProgressText } from '../../constants/badges';
+import { getLevel } from '../../constants/points';
+
+const BADGE_ICON_LIBS = { FontAwesome5, Ionicons, MaterialCommunityIcons };
 
 export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams(); 
@@ -284,17 +288,18 @@ const handleOpenLink = async (rawUrl) => {
             ) : (
               <Image source={require('../../assets/profile_image.jpg')} style={styles.mainAvatar} />
             )}
-            {/* Verified badge synced from profile.js */}
-            <View style={styles.verifiedBadge}>
-              <MaterialCommunityIcons name="check-decagram" size={20} color="#F28C28" />
+            {/* Level dot: replaces the old verified checkmark, which was redundant since every
+                user is already NUS-email-verified at signup and it conveyed no per-user info. */}
+            <View style={styles.levelDotBadge}>
+              <Text style={styles.levelDotText}>{getLevel(profile?.points || 0).level}</Text>
             </View>
           </View>
-          
+
           <Text style={styles.profileName}>{displayName}</Text>
           <Text style={styles.profileSubtitle}>
             {profile?.faculty || 'NUS'} • {profile?.year || '1'}
           </Text>
-          
+
           {profile?.buddyStatus ? (
             <View style={styles.buddyBadge}>
               <Ionicons name="people-outline" size={15} color="#A04000" />
@@ -302,6 +307,26 @@ const handleOpenLink = async (rawUrl) => {
             </View>
           ) : null}
         </View>
+
+        <Text style={styles.sectionHeading}>Badges</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgesScroll}>
+          {BADGE_CATEGORIES.map((category) => {
+            const unlockedTier = getUnlockedTier(category.key, profile?.badges || []);
+            const colors = TIER_COLORS[unlockedTier === 'unlocked' ? 'gold' : unlockedTier] || TIER_COLORS.locked;
+            const IconComponent = BADGE_ICON_LIBS[category.iconLib];
+            return (
+              <View style={styles.badgeItem} key={category.key}>
+                <View style={[styles.badgeCircle, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                  <IconComponent name={category.icon} size={24} color={colors.icon} />
+                </View>
+                <Text style={styles.badgeLabel}>{category.name}</Text>
+                <Text style={styles.badgeProgressText}>
+                  {getProgressText(category, profile?.badgeCounts || {}, unlockedTier)}
+                </Text>
+              </View>
+            );
+          })}
+        </ScrollView>
 
         {/* Academic Card */}
         <View style={styles.academicCard}>
@@ -394,12 +419,20 @@ const styles = StyleSheet.create({
   profileCard: { backgroundColor: '#FFFFFF', borderRadius: 8, padding: 20, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#EAEAEA', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
   avatarContainer: { position: 'relative', marginBottom: 15 },
   mainAvatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 3, borderColor: '#002D5B', backgroundColor: '#FAFAFA' },
-  verifiedBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#FFF', borderRadius: 10, padding: 2 },
+  levelDotBadge: { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: '#F28C28', borderWidth: 2, borderColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+  levelDotText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
   profileName: { fontSize: 22, fontWeight: 'bold', color: '#002D5B', marginBottom: 4 },
   profileSubtitle: { fontSize: 14, color: '#555', marginBottom: 10 },
   buddyBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF5EB', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 5 },
   buddyBadgeText: { color: '#A04000', fontSize: 12, fontWeight: '600', marginLeft: 5 },
-  
+
+  sectionHeading: { fontSize: 15, fontWeight: 'bold', color: '#002D5B', marginBottom: 10 },
+  badgesScroll: { marginBottom: 20 },
+  badgeItem: { alignItems: 'center', marginRight: 20, width: 80 },
+  badgeCircle: { width: 60, height: 60, borderRadius: 30, borderWidth: 1, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  badgeLabel: { fontSize: 11, color: '#444', textAlign: 'center', fontWeight: '500' },
+  badgeProgressText: { fontSize: 9, color: '#999', textAlign: 'center', marginTop: 2 },
+
   academicCard: { backgroundColor: '#FFFFFF', borderRadius: 8, padding: 16, marginBottom: 15, borderWidth: 1, borderColor: '#EAEAEA' },
   aboutCard: { backgroundColor: '#FFFFFF', borderRadius: 8, padding: 16, marginBottom: 15, borderWidth: 1, borderColor: '#EAEAEA' },
   interestsLabel: { fontSize: 12, fontWeight: 'bold', color: '#A04000', marginBottom: 10 },
