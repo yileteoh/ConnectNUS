@@ -37,5 +37,13 @@ module.exports = {
   buddyBonder: {
     name: 'Buddy Bonder',
     tiers: []
+  },
+  forumPostsCreated: {
+    name: 'Forum Voice',
+    tiers: [
+      { tier: 'bronze', threshold: 3 },
+      { tier: 'silver', threshold: 15 },
+      { tier: 'gold', threshold: 50 }
+    ]
   }
 };

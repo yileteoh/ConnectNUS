@@ -20,10 +20,13 @@ exports.createPost = async (req, res) => {
 
     const docRef = await db.collection('forums').add(newPost);
 
-    // Award points for creating a forum post
+    // Award points and progress toward the Forum Voice badge for creating a forum post
     try {
       await pointsService.awardPoints(creatorId, 'forumPostCreated');
     } catch (e) { console.error('awardPoints (forum post created) failed:', e); }
+    try {
+      await badgeService.awardProgress(creatorId, 'forumPostsCreated');
+    } catch (e) { console.error('awardProgress (forum posts created) failed:', e); }
 
     return res.status(201).json({ status: 'success', data: { id: docRef.id, ...newPost } });
   } catch (error) {

@@ -66,6 +66,18 @@ export const BADGE_CATEGORIES = [
     icon: 'people',
     tiers: [], // one-time badge, no thresholds
   },
+  {
+    key: 'forumPostsCreated',
+    name: 'Forum Voice',
+    description: 'Earned by starting discussion threads in the forum.',
+    iconLib: 'Ionicons',
+    icon: 'megaphone',
+    tiers: [
+      { tier: 'bronze', threshold: 3 },
+      { tier: 'silver', threshold: 15 },
+      { tier: 'gold', threshold: 50 },
+    ],
+  },
 ];
 
 // Highest unlocked tier for a category, or null if locked. `badges` is profile.badges from Firestore.
