@@ -267,7 +267,7 @@ exports.updateComment = async (req, res) => {
     if (!doc.exists) return res.status(404).json({ status: 'error', message: 'Comment not found.' });
     if (doc.data().userId !== userId) return res.status(403).json({ status: 'error', message: 'Unauthorized' });
 
-    await commentRef.update({ text, isEdited: true });
+    await commentRef.update({ text, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
     return res.status(200).json({ status: 'success', message: 'Comment updated' });
   } catch (error) { return res.status(500).json({ status: 'error', message: error.message }); }
 };

@@ -30,6 +30,16 @@ const getRelativeTime = (timeData) => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
+const toMillis = (timeData) => {
+  if (!timeData) return 0;
+  if (timeData._seconds) return timeData._seconds * 1000;
+  if (timeData.seconds) return timeData.seconds * 1000;
+  const date = new Date(timeData);
+  return isNaN(date.getTime()) ? 0 : date.getTime();
+};
+
+const wasEdited = (item) => toMillis(item.updatedAt) > toMillis(item.createdAt);
+
 export default function ForumDetailsScreen() {
   const { id } = useLocalSearchParams(); 
   const router = useRouter();
@@ -243,7 +253,9 @@ export default function ForumDetailsScreen() {
           )}
           <View>
             <Text style={styles.authorName}>{isPostCreator ? 'You' : post.creatorName}</Text>
-            <Text style={styles.timeText}>{getRelativeTime(post.createdAt)} in {post.category}</Text>
+            <Text style={styles.timeText}>
+              {getRelativeTime(wasEdited(post) ? post.updatedAt : post.createdAt)}{wasEdited(post) ? ' • edited' : ''} in {post.category}
+            </Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -312,7 +324,9 @@ export default function ForumDetailsScreen() {
                   <View style={styles.commentHeader}>
                     <View>
                       <Text style={styles.commentAuthorName}>{isCommentCreator ? 'You' : item.userName}</Text>
-                      <Text style={styles.commentTime}>{getRelativeTime(item.createdAt)}</Text>
+                      <Text style={styles.commentTime}>
+                        {getRelativeTime(wasEdited(item) ? item.updatedAt : item.createdAt)}{wasEdited(item) ? ' • edited' : ''}
+                      </Text>
                     </View>
                     
                     {/* Inline Comment Actions */}

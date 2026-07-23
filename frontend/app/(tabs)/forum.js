@@ -43,6 +43,16 @@ const getRelativeTime = (timeData) => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
+const toMillis = (timeData) => {
+  if (!timeData) return 0;
+  if (timeData._seconds) return timeData._seconds * 1000;
+  if (timeData.seconds) return timeData.seconds * 1000;
+  const date = new Date(timeData);
+  return isNaN(date.getTime()) ? 0 : date.getTime();
+};
+
+const wasEdited = (item) => toMillis(item.updatedAt) > toMillis(item.createdAt);
+
 export default function ForumScreen() {
   const router = useRouter();
   
@@ -149,7 +159,9 @@ export default function ForumScreen() {
           <View style={[styles.tagBadge, { backgroundColor: tagStyle.bg }]}>
             <Text style={[styles.tagText, { color: tagStyle.text }]}>{post.category}</Text>
           </View>
-          <Text style={styles.timeText}>{getRelativeTime(post.createdAt)}</Text>
+          <Text style={styles.timeText}>
+            {getRelativeTime(wasEdited(post) ? post.updatedAt : post.createdAt)}{wasEdited(post) ? ' • edited' : ''}
+          </Text>
         </View>
         
         <Text style={styles.postTitle}>{post.title}</Text>
