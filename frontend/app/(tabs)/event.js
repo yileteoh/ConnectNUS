@@ -99,18 +99,26 @@ export default function EventScreen() {
     const maxCount = event.capacity || 1;
     const isFull = currentCount >= maxCount;
     const fillPercentage = Math.min((currentCount / maxCount) * 100, 100);
+    const isOwnEvent = event.creatorId === currentUserId;
 
     return (
-      <TouchableOpacity 
-        key={event.id} 
-        style={styles.card}
+      <TouchableOpacity
+        key={event.id}
+        style={[styles.card, isOwnEvent && styles.cardOwn]}
         activeOpacity={0.8}
-        onPress={() => router.push(`../event-details/${event.id}`)} 
+        onPress={() => router.push(`../event-details/${event.id}`)}
       >
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle} numberOfLines={2}>{event.title}</Text>
-          <View style={[styles.badge, isFull ? styles.badgeFull : styles.badgeNormal]}>
-            <Text style={styles.badgeText}>{isFull ? 'FULL' : event.category}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {isOwnEvent && (
+              <View style={styles.hostPill}>
+                <Text style={styles.hostPillText}>Host</Text>
+              </View>
+            )}
+            <View style={[styles.badge, isFull ? styles.badgeFull : styles.badgeNormal]}>
+              <Text style={styles.badgeText}>{isFull ? 'FULL' : event.category}</Text>
+            </View>
           </View>
         </View>
 
@@ -279,6 +287,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#EAEAEA', shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
   },
+  cardOwn: { backgroundColor: '#FFF7ED' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
   cardTitle: { fontSize: 17, fontWeight: 'bold', color: '#002D5B', flex: 1, marginRight: 10, lineHeight: 22 },
 
@@ -287,6 +296,8 @@ const styles = StyleSheet.create({
   badgeNormal: { backgroundColor: '#EBF4FA' },
   badgeFull: { backgroundColor: '#FFEBEE' },
   badgeText: { color: '#002D5B', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  hostPill: { backgroundColor: '#FFEDD5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 6 },
+  hostPillText: { color: '#C2410C', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
 
   /* Card Info Rows */
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
