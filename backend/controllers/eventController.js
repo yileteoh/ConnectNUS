@@ -2,6 +2,7 @@ const { admin, db } = require('../config/firebase');
 const {
   createGroupConversation, addUserToGroupConversation,
   removeUserFromGroupConversation, deleteGroupConversation,
+  renameGroupConversation,
 } = require('./chatController');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const badgeService = require('../utils/badgeService');
@@ -397,6 +398,13 @@ exports.updateEvent = async (req, res) => {
 
     // Apply patch changes to Firestore document
     await eventRef.update(updatedFields);
+
+    // Keep the linked group chat's name in sync with the new event title
+    if (updatedFields.title !== eventData.title) {
+      try {
+        await renameGroupConversation(eventId, updatedFields.title);
+      } catch (e) { console.error('renameGroupConversation failed:', e); }
+    }
 
     return res.status(200).json({
       status: 'success',

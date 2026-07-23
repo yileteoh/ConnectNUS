@@ -45,6 +45,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "backendUrl": "https://onrender.com",
+      "router": {},
+      "eas": {
+        "projectId": "b753ad02-2ab7-442b-82f1-1378dea7a017"
+      }
     }
   }
 }

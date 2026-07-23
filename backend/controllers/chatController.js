@@ -267,11 +267,23 @@ const deleteGroupConversation = async (eventId) => {
   await db.collection('conversations').doc(`event_${eventId}`).delete();
 };
 
+// Keeps the group chat name in sync when the host renames the event, and
+// posts a system notice so members know why the chat title changed.
+const renameGroupConversation = async (eventId, newTitle) => {
+  const convRef = db.collection('conversations').doc(`event_${eventId}`);
+  const convDoc = await convRef.get();
+  if (!convDoc.exists || convDoc.data().eventTitle === newTitle) return;
+
+  await convRef.update({ eventTitle: newTitle });
+  await saveSystemMessage(`event_${eventId}`, `Group name changed to '${newTitle}'`);
+};
+
 module.exports = {
   getOrCreateConversation, getConversations, getMessages, saveMessage,
   markAsRead, setUnreadForParticipants,
   ensureGroupConversation,
   createGroupConversation, addUserToGroupConversation,
   removeUserFromGroupConversation, deleteGroupConversation,
+  renameGroupConversation,
   buildConversationId,
 };
