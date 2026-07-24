@@ -402,7 +402,7 @@ exports.updateEvent = async (req, res) => {
     // Keep the linked group chat's name in sync with the new event title
     if (updatedFields.title !== eventData.title) {
       try {
-        await renameGroupConversation(eventId, updatedFields.title);
+        await renameGroupConversation(eventId, updatedFields.title, userId);
       } catch (e) { console.error('renameGroupConversation failed:', e); }
     }
 

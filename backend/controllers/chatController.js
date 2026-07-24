@@ -234,13 +234,33 @@ const createGroupConversation = async (eventId, eventTitle, creatorId, creatorIn
   });
 };
 
-const saveSystemMessage = async (conversationId, text) => {
-  await db.collection('conversations').doc(conversationId).collection('messages').add({
+const saveSystemMessage = async (conversationId, text, excludeUserId = null) => {
+  const convRef = db.collection('conversations').doc(conversationId);
+
+  await convRef.collection('messages').add({
     type: 'system',
     text,
     senderId: null,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   });
+
+  const convDoc = await convRef.get();
+  const participants = convDoc.exists ? (convDoc.data().participants || []) : [];
+
+  await convRef.set({
+    lastMessage: { text, senderId: null },
+    lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  const unreadUpdate = {};
+  participants.forEach((uid) => {
+    if (uid !== excludeUserId) {
+      unreadUpdate[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
+    }
+  });
+  if (Object.keys(unreadUpdate).length > 0) {
+    await convRef.update(unreadUpdate).catch(() => {});
+  }
 };
 
 const addUserToGroupConversation = async (eventId, userId, userInfo) => {
@@ -269,13 +289,13 @@ const deleteGroupConversation = async (eventId) => {
 
 // Keeps the group chat name in sync when the host renames the event, and
 // posts a system notice so members know why the chat title changed.
-const renameGroupConversation = async (eventId, newTitle) => {
+const renameGroupConversation = async (eventId, newTitle, hostId = null) => {
   const convRef = db.collection('conversations').doc(`event_${eventId}`);
   const convDoc = await convRef.get();
   if (!convDoc.exists || convDoc.data().eventTitle === newTitle) return;
 
   await convRef.update({ eventTitle: newTitle });
-  await saveSystemMessage(`event_${eventId}`, `Group name changed to '${newTitle}'`);
+  await saveSystemMessage(`event_${eventId}`, `Group name changed to '${newTitle}'`, hostId);
 };
 
 module.exports = {
