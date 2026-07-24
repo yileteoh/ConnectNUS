@@ -4,7 +4,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Image, TextInput,
   ActivityIndicator, SafeAreaView, Platform, StatusBar, KeyboardAvoidingView, FlatList, Keyboard, Alert
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
 import { 
@@ -71,7 +71,7 @@ export default function ForumDetailsScreen() {
     }
   }, [id, router]);
 
-  useEffect(() => { fetchPostAndComments(); }, [fetchPostAndComments]);
+  useFocusEffect(useCallback(() => { fetchPostAndComments(); }, [fetchPostAndComments]));
 
   const handleProfileNav = (targetUid) => {
     if (targetUid === currentUserId) router.push('/(tabs)/profile');

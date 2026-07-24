@@ -138,7 +138,7 @@ export default function EditEventScreen() {
       });
 
       Alert.alert('Updated Successfully!', 'Your changes have been saved.', [
-        { text: 'OK', onPress: () => router.replace(`/event-details/${id}`) }
+        { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error) {
       Alert.alert('Update Terminated', error.message || 'Check structural constraints.');

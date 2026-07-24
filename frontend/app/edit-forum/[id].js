@@ -43,7 +43,7 @@ export default function EditForumScreen() {
     setSubmitting(true);
     try {
       await updateForumPost(id, auth.currentUser?.uid, { title: title.trim(), category, content: content.trim() });
-      Alert.alert('Success', 'Post updated.', [{ text: 'OK', onPress: () => router.replace(`/forum-details/${id}`) }]);
+      Alert.alert('Success', 'Post updated.', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally { setSubmitting(false); }

@@ -4,7 +4,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
   Alert, ActivityIndicator, SafeAreaView, Platform, StatusBar, Image 
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../../firebaseConfig';
 import { getEventDetails, joinEvent, leaveEvent, deleteEvent } from '../../services/eventService';
@@ -41,9 +41,11 @@ export default function EventDetailsScreen() {
     }
   }, [id, router]);
 
-  useEffect(() => {
-    fetchDetails();
-  }, [fetchDetails]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchDetails();
+    }, [fetchDetails])
+  );
 
   // Self-Click Filter Router Interceptor
   const handleAttendeeNavigation = (attendeeUid) => {
