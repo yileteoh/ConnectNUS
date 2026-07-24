@@ -123,19 +123,25 @@ export default function TrendingForumScreen() {
   const renderPost = ({ item: post }) => {
     const tagStyle = getTagColor(post.category);
     const isLiked = post.likes?.includes(currentUserId);
+    const isOwnPost = post.creatorId === currentUserId;
 
     return (
-      <TouchableOpacity 
-        style={styles.postCard}
+      <TouchableOpacity
+        style={[styles.postCard, isOwnPost && styles.postCardOwn]}
         activeOpacity={0.8}
         // Use relative path for routing to forum-details
-        onPress={() => router.push(`/forum-details/${post.id}`)} 
+        onPress={() => router.push(`/forum-details/${post.id}`)}
       >
         <View style={styles.postHeader}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={[styles.tagBadge, { backgroundColor: tagStyle.bg }]}>
               <Text style={[styles.tagText, { color: tagStyle.text }]}>{post.category}</Text>
             </View>
+            {isOwnPost && (
+              <View style={styles.ownPill}>
+                <Text style={styles.ownPillText}>Created by you</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.timeText}>{getRelativeTime(post.createdAt)}</Text>
         </View>
@@ -227,9 +233,12 @@ const styles = StyleSheet.create({
   emptyStateTitle: { fontSize: 18, fontWeight: 'bold', color: '#002D5B', marginTop: 12 },
   emptyStateSub: { fontSize: 14, color: '#666', marginTop: 6, textAlign: 'center' },
   postCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 15, borderWidth: 1, borderColor: '#EAEAEA', shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+  postCardOwn: { backgroundColor: '#FFF7ED' },
   postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   tagBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   tagText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  ownPill: { backgroundColor: '#FFEDD5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginLeft: 6 },
+  ownPillText: { color: '#C2410C', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
   timeText: { fontSize: 12, color: '#888' },
   postTitle: { fontSize: 18, fontWeight: 'bold', color: '#002D5B', marginBottom: 8, lineHeight: 24 },
   postSnippet: { fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 14 },
