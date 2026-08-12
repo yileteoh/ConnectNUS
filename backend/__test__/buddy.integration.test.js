@@ -25,6 +25,7 @@ jest.mock('firebase-admin', () => ({
   })
 }));
 
+// Mock fetch to prevent actual network requests during tests
 const loadAppWithSeed = (seed = {}) => {
   jest.resetModules();
   mockDb = createFirestoreMock(seed);

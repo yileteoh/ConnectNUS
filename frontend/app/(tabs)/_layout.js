@@ -2,7 +2,9 @@
 import { Tabs } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
+// Define the main tab layout for the application, including icons and styling
 export default function TabLayout() {
+  // Render the tab navigator with custom icons and styles for each screen
   return (
     <Tabs 
       screenOptions={{ 

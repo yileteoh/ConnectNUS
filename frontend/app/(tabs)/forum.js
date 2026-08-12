@@ -43,6 +43,7 @@ const getRelativeTime = (timeData) => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
+// Convert timestamp to milliseconds for comparison
 const toMillis = (timeData) => {
   if (!timeData) return 0;
   if (timeData._seconds) return timeData._seconds * 1000;
@@ -64,6 +65,7 @@ export default function ForumScreen() {
   
   const currentUserId = auth.currentUser?.uid;
 
+  // Fetch forums based on the active category
   const loadForums = async (categoryFilter = activeCategory) => {
     try {
       const data = await fetchGlobalForums(categoryFilter);
@@ -84,11 +86,13 @@ export default function ForumScreen() {
     }, [activeCategory])
   );
 
+  // Pull-to-refresh handler
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadForums(activeCategory);
   }, [activeCategory]);
 
+  // Handle switching between forum categories
   const handleCategorySwitch = (category) => {
     if (category === activeCategory) return;
     setActiveCategory(category);
@@ -138,6 +142,7 @@ export default function ForumScreen() {
     }
   };
 
+  // Filter forums based on search query (case-insensitive)
   const filteredForums = forums.filter(post => {
     const query = searchQuery.toLowerCase();
     return (
@@ -145,6 +150,7 @@ export default function ForumScreen() {
     );
   });
 
+  // Render each forum post in the FlatList
   const renderPost = ({ item: post }) => {
     const tagStyle = getTagColor(post.category);
     const isLiked = post.likes?.includes(currentUserId);

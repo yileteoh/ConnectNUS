@@ -5,11 +5,13 @@ import { auth } from '../firebaseConfig';
 import ProfileForm from '../components/ProfileForm';
 import { getUserProfile } from '../services/profileService';
 
+//
 export default function EditProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch the user's profile data when the component mounts
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -28,6 +30,7 @@ export default function EditProfileScreen() {
     loadProfile();
   }, []);
 
+  // Show a loading indicator while fetching profile data
   if (loading) {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -37,6 +40,7 @@ export default function EditProfileScreen() {
     );
   }
 
+  // Render the ProfileForm with the fetched profile data
   return (
     <ProfileForm
       initialProfile={profile}

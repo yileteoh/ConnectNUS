@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+// Import the chat controller functions
 const { getOrCreateConversation, getConversations, getMessages, markAsRead, ensureGroupConversation } = require('../controllers/chatController');
 
+// Chat routes
 router.post('/conversations', getOrCreateConversation);
 router.post('/group/:eventId', ensureGroupConversation);
 router.get('/conversations/:userId', getConversations);

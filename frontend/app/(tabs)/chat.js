@@ -9,6 +9,7 @@ import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import Header from '../../components/Header';
 import { auth, db } from '../../firebaseConfig';
 
+// Utility function to convert Firestore timestamp to milliseconds
 const toMs = (ts) => {
   if (!ts) return null;
   if (typeof ts.toMillis === 'function') return ts.toMillis();
@@ -17,6 +18,7 @@ const toMs = (ts) => {
   return null;
 };
 
+// Format the last seen status of a user for display
 const formatTime = (ts) => {
   const ms = toMs(ts);
   if (!ms) return '';
@@ -38,6 +40,7 @@ export default function ChatScreen() {
   const [myBuddyId, setMyBuddyId] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
 
+  // Real-time listener for the current user's buddy ID
   useEffect(() => {
     if (!currentUserId) return;
     const unsub = onSnapshot(doc(db, 'users', currentUserId), (snap) => {
@@ -53,6 +56,7 @@ export default function ChatScreen() {
     if (!currentUserId) return;
     let retryTimer;
 
+    // Set up a Firestore query to listen for conversations involving the current user
     const q = query(
       collection(db, 'conversations'),
       where('participants', 'array-contains', currentUserId)
@@ -70,6 +74,7 @@ export default function ChatScreen() {
       const activeUserId = auth.currentUser?.uid;
       const isAuthSwitching = err.code === 'permission-denied' && activeUserId !== currentUserId;
 
+      // If the user is switching accounts, we don't want to show an error or retry, as the listener will be re-established for the new user.
       if (isAuthSwitching) {
         return;
       }
@@ -105,12 +110,14 @@ export default function ChatScreen() {
     return tB - tA;
   });
 
+  // Render each conversation card in the list
   const renderConversationCard = ({ item }) => {
     const isGroup = item.type === 'group' || item.conversationId?.startsWith('event_');
     const lastText = item.lastMessage?.text || 'No messages yet';
     const lastTime = formatTime(item.lastMessageTime);
     const unread = item.unreadCounts?.[currentUserId] || 0;
 
+    // Render group chat card
     if (isGroup) {
       const groupName = item.eventTitle || 'Group Chat';
       return (
@@ -238,6 +245,7 @@ const styles = StyleSheet.create({
   unreadBadge: { backgroundColor: '#E53935', borderRadius: 10, minWidth: 20, height: 20, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
   unreadBadgeText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
 
+  // Empty state styling
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
   emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#002D5B', marginTop: 12 },
   emptySub: { fontSize: 14, color: '#666', marginTop: 6, textAlign: 'center', lineHeight: 20 },

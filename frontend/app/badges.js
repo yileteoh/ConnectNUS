@@ -10,6 +10,7 @@ import { auth } from '../firebaseConfig';
 import { getUserProfile } from '../services/profileService';
 import { BADGE_CATEGORIES, TIER_COLORS, getUnlockedTier, getProgressText } from '../constants/badges';
 
+// Define a mapping of icon libraries for badge categories
 const BADGE_ICON_LIBS = { FontAwesome5, Ionicons, MaterialCommunityIcons };
 
 export default function BadgesScreen() {
@@ -17,10 +18,12 @@ export default function BadgesScreen() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch the user's profile data when the screen is focused
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
 
+      // Fetch the user's profile data from the backend
       const fetchProfile = async () => {
         setLoading(true);
         try {

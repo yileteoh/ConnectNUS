@@ -2,18 +2,20 @@ const { db } = require('../config/firebase');
 const badgeConfig = require('../config/badges');
 const { sendNotification } = require('./notificationHelper');
 
-// Firestore doesn't allow FieldValue.serverTimestamp() inside array elements, so badge
-// entries use a plain ISO string for unlockedAt instead of a Timestamp sentinel.
+// Firestore doesn't allow FieldValue.serverTimestamp() inside array elements, so badge entries use a plain ISO string for unlockedAt instead of a Timestamp sentinel
 const now = () => new Date().toISOString();
 
-// Bump a counter-backed badge category by `incrementBy` and award any newly-crossed tier(s).
-// Read-then-write inside a transaction (no FieldValue.increment - keeps parity with the
-// rest of the codebase's counter style and with the test firestore mock).
+/* 
+Bump a counter-backed badge category by `incrementBy` and award any newly-crossed tier(s)
+Read-then-write inside a transaction (no FieldValue.increment - keeps parity with the
+rest of the codebase's counter style and with the test firestore mock) 
+*/
 const awardProgress = async (userId, category, incrementBy = 1) => {
   const config = badgeConfig[category];
   const userRef = db.collection('users').doc(userId);
   let newlyUnlocked = [];
 
+  // Read-then-write inside a transaction to bump the badge count and award any newly-crossed tier
   await db.runTransaction(async (transaction) => {
     const doc = await transaction.get(userRef);
     if (!doc.exists) return;
@@ -29,6 +31,7 @@ const awardProgress = async (userId, category, incrementBy = 1) => {
       existingBadges.filter((b) => b.category === category).map((b) => b.tier)
     );
 
+    // Award any newly-crossed tiers for this category
     const badgesToAdd = config.tiers
       .filter((t) => newCount >= t.threshold && oldCount < t.threshold && !alreadyUnlockedTiers.has(t.tier))
       .map((t) => ({
@@ -47,6 +50,7 @@ const awardProgress = async (userId, category, incrementBy = 1) => {
     newlyUnlocked = badgesToAdd;
   });
 
+  // Send notifications for any newly unlocked badges
   for (const badge of newlyUnlocked) {
     await sendNotification({
       userId,
@@ -77,6 +81,7 @@ const unlockOnce = async (userId, category) => {
     transaction.update(userRef, { badges: [...existingBadges, badge] });
   });
 
+  // Send notification if the badge was newly unlocked
   if (badge) {
     await sendNotification({
       userId,
@@ -90,10 +95,10 @@ const unlockOnce = async (userId, category) => {
   return badge;
 };
 
-// Rank buddy seniority off the profile YEAR_OPTIONS scale to decide who is the
-// mentor (senior) vs mentee (junior) in a matched pair. Returns null on a tie.
+// Rank buddy seniority off the profile YEAR_OPTIONS scale to decide who is the senior vs junior in a matched pair
 const YEAR_RANK = { 'Year 1': 1, 'Year 2': 2, 'Year 3': 3, 'Year 4': 4, 'Year 5+': 5, 'Graduate': 6 };
 
+// Given two users and their respective year levels, return the senior and junior user IDs, or null if they are the same year
 const getSeniorPartner = (userAId, yearA, userBId, yearB) => {
   const rankA = YEAR_RANK[yearA] || 0;
   const rankB = YEAR_RANK[yearB] || 0;

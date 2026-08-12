@@ -30,6 +30,7 @@ import {
   YEAR_OPTIONS,
 } from '../constants/profileOptions';
 
+// Helper function to toggle a value in a list
 const toggleListValue = (currentList, value) => {
   if (currentList.includes(value)) {
     return currentList.filter((item) => item !== value);
@@ -38,6 +39,7 @@ const toggleListValue = (currentList, value) => {
   return [...currentList, value];
 };
 
+// ProfileForm component for editing user profiles, including basic and extended profile fields
 export default function ProfileForm({
   initialProfile,
   title,
@@ -56,6 +58,7 @@ export default function ProfileForm({
   const [allModules, setAllModules] = useState([]);
   const [isFetchingModules, setIsFetchingModules] = useState(true);
 
+  // Initialize the form state based on the initialProfile, normalizing socialLinks to a string for display
   useEffect(() => {
 
     const normalized = normalizeProfile(initialProfile || {});
@@ -69,6 +72,7 @@ export default function ProfileForm({
     setForm(normalized);
   }, [initialProfile]);
 
+  // Fetch the list of NUS modules from the NUSMods API and store them in state
   useEffect(() => {
     let isActive = true;
     const fetchNUSModules = async () => {
@@ -90,6 +94,7 @@ export default function ProfileForm({
     return () => { isActive = false; };
   }, []);
 
+  // Memoized filtered list of modules based on the search query, limited to 20 results
   const moduleOptions = useMemo(() => {
 
     if (!Array.isArray(allModules) || allModules.length === 0) {
@@ -117,18 +122,22 @@ export default function ProfileForm({
     return require('../assets/profile_image.jpg');
   };
 
+  // Update a specific field in the form state
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  // Toggle a module in the modules list of the form state
   const toggleModule = (moduleCode) => {
     updateField('modules', toggleListValue(form.modules, moduleCode));
   };
 
+  // Toggle an interest in the interests list of the form state
   const toggleInterest = (interest) => {
     updateField('interests', toggleListValue(form.interests, interest));
   };
 
+  // Add a custom interest to the interests list of the form state
   const addCustomInterest = () => {
     const nextInterest = customInterest.trim();
     if (!nextInterest) return;
@@ -140,6 +149,7 @@ export default function ProfileForm({
     setCustomInterest('');
   };
 
+  // Handle picking a profile photo from the user's library, uploading it, and updating the form state with the new URL
   const handlePickProfilePhoto = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -165,6 +175,7 @@ export default function ProfileForm({
     }
   };
 
+  // Handle saving the profile form, validating required fields, and updating the user's profile in Firestore
   const handleSave = async () => {
     const userId = auth.currentUser?.uid;
 
@@ -188,6 +199,7 @@ export default function ProfileForm({
     }
 
     setSaving(true);
+    // Save the profile data to Firestore, normalizing socialLinks to an array and trimming the profilePicUrl
     try {
       const submissionData = { ...form };
 
@@ -216,6 +228,7 @@ export default function ProfileForm({
     }
   };
 
+  // Render the profile form
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -484,6 +497,7 @@ export default function ProfileForm({
   );
 }
 
+// Styles for the ProfileForm component
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

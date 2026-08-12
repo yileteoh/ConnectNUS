@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const forumController = require('../controllers/forumController');
 
+// Forum routes
 router.post('/forums', forumController.createPost);
 router.get('/forums', forumController.getPosts);
 router.put('/forums/:postId/toggle-like', forumController.toggleLike);

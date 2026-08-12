@@ -11,14 +11,17 @@ import Constants from 'expo-constants';
 
 const BASE_URL = Constants.expoConfig?.extra?.backendUrl || 'http://YOUR_LOCAL_IP:3000';
 
+// FeedbackScreen component
 export default function FeedbackScreen() {
   const router = useRouter();
   const [feedbackText, setFeedbackText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Handle feedback submission
   const handleSubmit = async () => {
     if (!feedbackText.trim()) return Alert.alert('Error', 'Please write some feedback first.');
     
+    // Set submitting state to true to show loading indicator
     setSubmitting(true);
     try {
       const response = await fetch(`${BASE_URL}/api/profile/feedback`, {

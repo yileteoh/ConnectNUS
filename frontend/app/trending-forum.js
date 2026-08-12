@@ -37,6 +37,7 @@ const getRelativeTime = (timeData) => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
+// Convert Firestore timestamp or date string to milliseconds
 const toMillis = (timeData) => {
   if (!timeData) return 0;
   if (timeData._seconds) return timeData._seconds * 1000;
@@ -47,9 +48,11 @@ const toMillis = (timeData) => {
 
 const wasEdited = (item) => toMillis(item.updatedAt) > toMillis(item.createdAt);
 
+// Main component for the Trending Discussions screen
 export default function TrendingForumScreen() {
   const router = useRouter();
   
+  // State for the list of trending forums, loading state, and pull-to-refresh state
   const [forums, setForums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,6 +96,7 @@ export default function TrendingForumScreen() {
     }
   };
 
+  // Load trending discussions when the screen is focused
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -123,6 +127,7 @@ export default function TrendingForumScreen() {
       return post;
     }));
 
+    // Attempt to toggle like in Firestore, revert if it fails
     try {
       await togglePostLike(postId, currentUserId);
     } catch (error) {
@@ -130,6 +135,7 @@ export default function TrendingForumScreen() {
     }
   };
 
+  // Render each post in the FlatList
   const renderPost = ({ item: post }) => {
     const tagStyle = getTagColor(post.category);
     const isLiked = post.likes?.includes(currentUserId);
@@ -191,6 +197,7 @@ export default function TrendingForumScreen() {
     );
   };
 
+  // Render the main screen with a custom header and a FlatList of trending discussions
   return (
     <SafeAreaView style={styles.safeArea}>
       

@@ -4,6 +4,7 @@ import { auth } from '../firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'expo-router';
 
+// LoginScreen component
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -95,6 +96,7 @@ export default function LoginScreen() {
   );
 }
 
+// Stylesheet mapping
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 30 },

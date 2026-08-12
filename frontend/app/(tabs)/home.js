@@ -40,6 +40,7 @@ export default function HomeScreen() {
   const [recommendedEvents, setRecommendedEvents] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
 
+  // Fetch and sync profile data, upcoming events, and AI recommendations when the screen is focused
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -82,6 +83,7 @@ export default function HomeScreen() {
             console.error('AI Recommendation fetch failed:', aiError);
           }
 
+          // Update state only if the component is still active
           if (isActive) {
             setProfile(profileData);
             setUpcomingEvents(upcoming.slice(0, 5));
@@ -102,6 +104,7 @@ export default function HomeScreen() {
     }, [])
   );
 
+  // Determine the welcome name to display, defaulting to email prefix or "Student"
   const welcomeName = profile?.name && profile.name.trim() !== ''
     ? profile.name
     : (auth.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Student');

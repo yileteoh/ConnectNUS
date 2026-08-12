@@ -1,5 +1,5 @@
 // Custom clone (not JSON.parse/stringify) so seeded Firestore-Timestamp-style
-// objects like { seconds: 1, toMillis: () => 1000 } keep their toMillis function.
+// Objects like { seconds: 1, toMillis: () => 1000 } keep their toMillis function
 const deepClone = (value) => {
   if (Array.isArray(value)) return value.map(deepClone);
   if (value && typeof value === 'object') {
@@ -19,6 +19,7 @@ const arrayUnion = (...values) => ({ __fieldValue: 'arrayUnion', values });
 const arrayRemove = (...values) => ({ __fieldValue: 'arrayRemove', values });
 const deleteField = () => DELETE_FIELD;
 
+// Apply Firestore-style field values to a target object, mutating it in place
 const applyFieldValues = (target, patch) => {
   Object.entries(patch).forEach(([key, value]) => {
     if (value && value.__fieldValue === 'serverTimestamp') {
@@ -50,6 +51,7 @@ const applyFieldValues = (target, patch) => {
   });
 };
 
+// Mock Firestore classes to simulate Firestore behavior in tests
 class DocumentSnapshot {
   constructor(id, value, ref) {
     this.id = id;
@@ -63,6 +65,7 @@ class DocumentSnapshot {
   }
 }
 
+// Mock QuerySnapshot class to simulate Firestore query results
 class QuerySnapshot {
   constructor(entries, collectionRef) {
     this.docs = entries.map(([id, value]) => new DocumentSnapshot(id, value, collectionRef.doc(id)));
@@ -75,6 +78,7 @@ class QuerySnapshot {
   }
 }
 
+// Helper function to check if a document matches a given filter
 const matchesFilter = (value, [field, op, target]) => {
   const actual = value ? value[field] : undefined;
   if (op === 'array-contains') {
@@ -83,6 +87,7 @@ const matchesFilter = (value, [field, op, target]) => {
   return actual === target;
 };
 
+// Mock Firestore classes to simulate Firestore behavior in tests
 class DocumentReference {
   constructor(store, path) {
     this.store = store;
@@ -118,6 +123,7 @@ class DocumentReference {
   }
 }
 
+// Mock CollectionReference class to simulate Firestore collection behavior
 class CollectionReference {
   constructor(store, path) {
     this.store = store;
@@ -148,6 +154,7 @@ class CollectionReference {
   }
 }
 
+// Mock Query class to simulate Firestore query behavior
 class Query {
   constructor(collectionRef, filters) {
     this.collectionRef = collectionRef;
@@ -170,6 +177,7 @@ class Query {
   }
 }
 
+// Mock Firestore store to simulate Firestore database behavior in tests
 class FirestoreStore {
   constructor(seed = {}) {
     this.data = new Map();
@@ -214,6 +222,7 @@ class FirestoreStore {
     return callback(transaction);
   }
 
+  // Mock batch operations to simulate Firestore batch behavior in tests
   batch() {
     const ops = [];
     return {

@@ -9,6 +9,7 @@ const {
 let mockDb;
 let app;
 
+// Mock firebase-admin to use the Firestore mock instead of the real Firestore
 jest.mock('firebase-admin', () => ({
   credential: {
     cert: jest.fn(() => ({ credential: true }))
@@ -23,6 +24,7 @@ jest.mock('firebase-admin', () => ({
   })
 }));
 
+// Mock fetch to prevent actual network requests during tests
 const loadAppWithSeed = (seed = {}) => {
   jest.resetModules();
   mockDb = createFirestoreMock(seed);
@@ -30,6 +32,7 @@ const loadAppWithSeed = (seed = {}) => {
   return app;
 };
 
+// Reset the mock database and reload the app before each test
 describe('Badge awarding', () => {
   describe('Popular Poster (likes received)', () => {
     beforeEach(() => {

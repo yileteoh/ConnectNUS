@@ -76,6 +76,7 @@ export default function EditEventScreen() {
     loadOriginalDetails();
   }, [id, router]);
 
+  // DateTime Picker Handler
   const handleDateChange = (event, selectedDate) => {
     if (Platform.OS === 'android') setShowPicker(false);
     if (!selectedDate) return;
@@ -88,6 +89,7 @@ export default function EditEventScreen() {
     setIsoTime(selectedDate.toISOString());
   };
 
+  // Form submission handler for saving changes
   const handleSaveChanges = async () => {
     const currentUserId = auth.currentUser?.uid;
     const capNumber = parseInt(capacity, 10);
@@ -97,6 +99,7 @@ export default function EditEventScreen() {
       return;
     }
 
+    // Validate that the selected time is in the future and capacity is reasonable
     const selectedTimeMs = new Date(isoTime).getTime();
     const currentTimeMs = Date.now();
     if (selectedTimeMs <= currentTimeMs) {
@@ -104,11 +107,13 @@ export default function EditEventScreen() {
       return;
     }
 
+    // Validate capacity constraints
     if (isNaN(capNumber) || capNumber <= 1) {
       Alert.alert('Invalid Capacity', 'An event must have at least 2 slots (including yourself).');
       return;
     }
 
+    // Notify all attendees about the update and save changes
     setSubmitting(true);
     try {
       const adjustmentPayload = {
@@ -147,6 +152,7 @@ export default function EditEventScreen() {
     }
   };
 
+  // Show a loading indicator while fetching event details
   if (loading) {
     return (
       <SafeAreaView style={styles.center}>

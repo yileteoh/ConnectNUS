@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+// Set notification handler to determine how notifications are displayed when the app is in the foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -74,6 +75,7 @@ const sendExpoPushNotification = async (expoPushToken, title, body, data) => {
     data: data,
   };
 
+  // Send the notification via Expo's push notification service
   try {
     await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
@@ -131,6 +133,7 @@ export const sendNotification = async (receiverId, title, body, type, referenceI
   }
 };
 
+// Sends a push notification specifically for chat messages
 export const sendChatPushNotification = async (receiverId, title, body, conversationId) => {
   try {
     if (!receiverId) return;

@@ -114,6 +114,7 @@ export default function ProfileScreen() {
     }
   };
 
+// Show a loading indicator while fetching profile data
 if (loading && !profile) {
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -126,6 +127,7 @@ if (loading && !profile) {
   );
 }
 
+  // If the profile is not set up yet, prompt the user to create their profile
   if (!profile || profile.setupComplete !== true) {
     return (
       <SafeAreaView style={styles.centerContainer}>

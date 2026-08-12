@@ -33,10 +33,12 @@ const formatEventTime = (isoString) => {
 
 export default function EventScreen() {
   
+  // Initialize router for navigation
   const router = useRouter();
 
   const currentUserId = auth.currentUser?.uid;
 
+  // State variables for managing events, loading states, and filters
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,6 +60,7 @@ export default function EventScreen() {
     }
   };
 
+  // Use focus effect to load events when the screen is focused
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -78,6 +81,7 @@ export default function EventScreen() {
     setLoading(true);
   };
 
+  // Filter events based on search query and future timing
   const filteredEvents = events.filter(event => {
     const query = searchQuery.toLowerCase();
     const matchesSearch = event.title && event.title.toLowerCase().includes(query);

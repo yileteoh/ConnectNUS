@@ -35,6 +35,7 @@ export default function CreateForumScreen() {
       return;
     }
 
+    // Set submitting state to true to show loading indicator
     setSubmitting(true);
     try {
       const transmissionPayload = {
@@ -130,6 +131,7 @@ export default function CreateForumScreen() {
   );
 }
 
+// Define the styling schema for the CreateForumScreen component
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FAFAFA', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   keyboardView: { flex: 1 },

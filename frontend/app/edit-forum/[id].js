@@ -18,6 +18,7 @@ export default function EditForumScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Fetch the original forum post details when the component mounts
   useEffect(() => {
     const fetchOriginal = async () => {
       try {
@@ -38,6 +39,7 @@ export default function EditForumScreen() {
     fetchOriginal();
   }, [id, router]);
 
+  // Form submission handler for saving edits
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) return Alert.alert('Missing Fields', 'Please complete title and content.');
     setSubmitting(true);
@@ -49,6 +51,7 @@ export default function EditForumScreen() {
     } finally { setSubmitting(false); }
   };
 
+  // Show a loading indicator while fetching post and comments
   if (loading) return <SafeAreaView style={styles.center}><ActivityIndicator size="large" color="#002D5B" /></SafeAreaView>;
 
   return (

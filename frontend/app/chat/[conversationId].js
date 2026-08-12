@@ -22,18 +22,20 @@ import {
 } from '../../services/chatService';
 import { sendChatPushNotification } from '../../services/notificationHelper';
 
+// Utility functions for formatting timestamps and last seen status
 const formatMessageTime = (timestamp) => {
   if (!timestamp) return '';
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+// Format the last seen status based on online status and last seen timestamp
 const formatLastSeen = (isOnline, lastSeen) => {
   const ms = lastSeen?.toMillis ? lastSeen.toMillis() : (lastSeen || 0);
   const diff = Date.now() - ms;
   const minutes = Math.floor(diff / 60000);
 
   // Treat isOnline as stale if lastSeen hasn't been refreshed within 5 min
-  // (heartbeat pings every 2 min, so >5 min means the app was killed/backgrounded)
+  // Heartbeat pings every 2 min, so >5 min means the app was killed/backgrounded
   if (isOnline && diff < 5 * 60 * 1000) return 'Active now';
 
   if (!ms) return 'Offline';
@@ -44,6 +46,7 @@ const formatLastSeen = (isOnline, lastSeen) => {
   return `Last seen ${Math.floor(hours / 24)}d ago`;
 };
 
+// Format a timestamp into a human-readable date string for date separators in the chat
 const formatDateSeparator = (timestamp) => {
   if (!timestamp) return '';
   const date = new Date(timestamp);
@@ -196,7 +199,7 @@ export default function ChatRoomScreen() {
   }, [conversationId]);
 
   // Initial scroll: keep showing the spinner until FlatList has measured all items
-  // and scrolled to the bottom, then reveal the list already at the correct position.
+  // and scrolled to the bottom, then reveal the list already at the correct position
   useEffect(() => {
     if (!loading) {
       if (messages.length === 0) {
@@ -282,13 +285,13 @@ export default function ChatRoomScreen() {
     }
   };
 
-  // Step 1: close the modal synchronously, then schedule the picker after the animation finishes
+  // 1. Close the modal synchronously, then schedule the picker after the animation finishes
   const handlePickImage = (fromCamera) => {
     setShowAttachMenu(false);
     setTimeout(() => launchPicker(fromCamera), 400);
   };
 
-  // Step 2: run after modal has fully dismissed
+  // 2.Run after modal has fully dismissed
   const launchPicker = async (fromCamera) => {
     try {
       let result;
@@ -345,6 +348,7 @@ export default function ChatRoomScreen() {
     setTimeout(() => launchDocumentPicker(), 400);
   };
 
+  // Run after modal has fully dismissed
   const launchDocumentPicker = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
@@ -375,10 +379,12 @@ export default function ChatRoomScreen() {
     }
   };
 
+  // Handle long press on a message to show the action menu
   const handleLongPress = (item, event) => {
     setActionMenu({ item, pageY: event.nativeEvent.pageY });
   };
 
+  // Handle deleting a message: remove from Firestore, update local state, and adjust lastMessage in the conversation
   const handleDeleteMessage = async (item) => {
     try {
       await deleteDoc(doc(db, 'conversations', conversationId, 'messages', item.messageId));
@@ -403,7 +409,7 @@ export default function ChatRoomScreen() {
         }, { merge: true });
       }
 
-      // If own message deleted, decrement the recipient's unread count (floor 0)
+      // If own message deleted, decrement the recipient's unread count
       if (item.senderId === currentUserId && otherId) {
         const convSnap = await getDoc(convRef);
         const theirUnread = convSnap.data()?.unreadCounts?.[otherId] || 0;
@@ -416,6 +422,7 @@ export default function ChatRoomScreen() {
     }
   };
 
+  // Handle saving an image to the device's photo library
   const handleSaveImage = async () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -436,6 +443,7 @@ export default function ChatRoomScreen() {
     }
   };
 
+  // Handle copying text to clipboard
   const getDocTypeLabel = (fileName) => fileName?.split('.').pop()?.toUpperCase() || 'FILE';
   const getDocTypeColor = (fileName) => {
     const ext = fileName?.split('.').pop()?.toLowerCase();
@@ -447,8 +455,9 @@ export default function ChatRoomScreen() {
     return '#455A64';
   };
 
-  const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
-  const isURL = (s) => /^(https?:\/\/|www\.)/i.test(s);
+  // Handle copying text to clipboard
+  const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/g; // Matches URLs starting with http(s):// or www.
+  const isURL = (s) => /^(https?:\/\/|www\.)/i.test(s); // Check if a string is a URL
   const renderText = (text, textStyle, linkStyle) => {
     const parts = text.split(URL_REGEX);
     return parts.map((part, i) => {
@@ -633,6 +642,7 @@ export default function ChatRoomScreen() {
     );
   };
 
+  // Format the other user's online status for display in the header
   const statusText = formatLastSeen(otherUserStatus.isOnline, otherUserStatus.lastSeen);
 
   return (

@@ -1,5 +1,4 @@
 // Single source of truth for badge categories and their tier thresholds.
-// Mirrored (display-only) in frontend/constants/badges.js.
 module.exports = {
   likesReceived: {
     name: 'Popular Poster',
@@ -33,7 +32,7 @@ module.exports = {
       { tier: 'gold', threshold: 90 }
     ]
   },
-  // One-time badge: no tiers, just a single unlock.
+  // One-time badge: no tiers, just a single unlock
   buddyBonder: {
     name: 'Buddy Bonder',
     tiers: []

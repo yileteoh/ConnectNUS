@@ -26,6 +26,7 @@ const getOrCreateConversation = async (req, res) => {
     const user1 = user1Doc.data() || {};
     const user2 = user2Doc.data() || {};
 
+    // Create a new conversation document with participant info
     const newConversation = {
       participants: [userId1, userId2],
       participantInfo: {
@@ -45,9 +46,9 @@ const getOrCreateConversation = async (req, res) => {
 };
 
 // GET /api/chat/conversations/:userId
-// Returns all conversations the user is part of, newest message first.
-// orderBy('lastMessageTime') is intentionally omitted: Firestore excludes documents
-// where the field is null, which would hide newly created group chats. We sort here instead.
+/* Returns all conversations the user is part of, newest message first.
+orderBy('lastMessageTime') is intentionally omitted: Firestore excludes documents
+where the field is null, which would hide newly created group chats. We sort here instead*/
 const getConversations = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -97,7 +98,6 @@ const getMessages = async (req, res) => {
   }
 };
 
-// Non-route helper used by the Socket.io handler in server.js
 // Saves a message to Firestore and updates the conversation's lastMessage preview
 const saveMessage = async (conversationId, senderId, text, type = 'text', imageUrl = null, replyTo = null) => {
   const convRef = db.collection('conversations').doc(conversationId);
@@ -114,6 +114,7 @@ const saveMessage = async (conversationId, senderId, text, type = 'text', imageU
 
   const msgDoc = await messagesRef.add(messageData);
 
+  // Update the conversation's lastMessage and lastMessageTime, and increment unread counts for other participants
   const previewText = type === 'image' ? '📷 Photo' : text;
   const convDoc = await convRef.get();
   const participants = convDoc.exists ? (convDoc.data().participants || []) : [];
@@ -133,8 +134,7 @@ const saveMessage = async (conversationId, senderId, text, type = 'text', imageU
     await convRef.update(unreadUpdate).catch(() => {});
   }
 
-  // Award one-time points for starting to use a conversation (first message in it, not
-  // per message sent, to avoid rewarding raw message spam)
+  // Award one-time points for starting to use a conversation (first message in it, not every message sent, to avoid rewarding raw message spam)
   try {
     await pointsService.awardPointsOnce(senderId, 'chatFirstMessage', `chatStarted_${conversationId}`);
   } catch (e) { console.error('awardPointsOnce (chat first message) failed:', e); }
@@ -150,7 +150,8 @@ const saveMessage = async (conversationId, senderId, text, type = 'text', imageU
   };
 };
 
-// PUT /api/chat/read/:conversationId/:userId — resets the unread count for this user in this conversation
+// PUT /api/chat/read/:conversationId/:userId
+// resets the unread count for this user in this conversation
 const markAsRead = async (req, res) => {
   try {
     const { conversationId, userId } = req.params;
@@ -164,7 +165,7 @@ const markAsRead = async (req, res) => {
 };
 
 // Increments unread counts for all participants except the sender.
-// Called by broadcast_text and broadcast_image socket handlers (which bypass saveMessage).
+// Called by broadcast_text and broadcast_image socket handlers
 const setUnreadForParticipants = async (conversationId, senderId) => {
   try {
     const convRef = db.collection('conversations').doc(conversationId);
@@ -180,7 +181,8 @@ const setUnreadForParticipants = async (conversationId, senderId) => {
   } catch (e) { console.error('setUnreadForParticipants failed:', e); }
 };
 
-// POST /api/chat/group/:eventId — creates the group conversation if missing, adds caller to participants
+// POST /api/chat/group/:eventId
+// Creates the group conversation if missing, adds caller to participants
 const ensureGroupConversation = async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -188,6 +190,7 @@ const ensureGroupConversation = async (req, res) => {
     const convRef = db.collection('conversations').doc(`event_${eventId}`);
     const convDoc = await convRef.get();
 
+    // If the conversation doesn't exist, create it with the caller as the first participant
     if (!convDoc.exists) {
       await convRef.set({
         type: 'group',
@@ -214,7 +217,7 @@ const ensureGroupConversation = async (req, res) => {
   }
 };
 
-// ── Group chat helpers (called by eventController, not exposed as routes) ──────
+// Group chat helpers
 
 const createGroupConversation = async (eventId, eventTitle, creatorId, creatorInfo) => {
   const convRef = db.collection('conversations').doc(`event_${eventId}`);
@@ -234,6 +237,7 @@ const createGroupConversation = async (eventId, eventTitle, creatorId, creatorIn
   });
 };
 
+// Saves a system message to the conversation and updates lastMessage, lastMessageTime, and unread counts for participants
 const saveSystemMessage = async (conversationId, text, excludeUserId = null) => {
   const convRef = db.collection('conversations').doc(conversationId);
 
@@ -252,6 +256,7 @@ const saveSystemMessage = async (conversationId, text, excludeUserId = null) => 
     lastMessageTime: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
+  // Increment unread counts for all participants except the excluded user
   const unreadUpdate = {};
   participants.forEach((uid) => {
     if (uid !== excludeUserId) {
@@ -263,6 +268,7 @@ const saveSystemMessage = async (conversationId, text, excludeUserId = null) => 
   }
 };
 
+// Adds a user to the group conversation and posts a system message announcing their arrival
 const addUserToGroupConversation = async (eventId, userId, userInfo) => {
   const convRef = db.collection('conversations').doc(`event_${eventId}`);
   await convRef.update({
@@ -272,6 +278,7 @@ const addUserToGroupConversation = async (eventId, userId, userInfo) => {
   await saveSystemMessage(`event_${eventId}`, `${userInfo.name || 'User'} joined the group`);
 };
 
+// Removes a user from the group conversation and posts a system message announcing their departure
 const removeUserFromGroupConversation = async (eventId, userId) => {
   const convRef = db.collection('conversations').doc(`event_${eventId}`);
   const convDoc = await convRef.get();
@@ -287,8 +294,7 @@ const deleteGroupConversation = async (eventId) => {
   await db.collection('conversations').doc(`event_${eventId}`).delete();
 };
 
-// Keeps the group chat name in sync when the host renames the event, and
-// posts a system notice so members know why the chat title changed.
+// Keeps the group chat name in sync when the host renames the event, and posts a system notice so members know why the chat title changed
 const renameGroupConversation = async (eventId, newTitle, hostId = null) => {
   const convRef = db.collection('conversations').doc(`event_${eventId}`);
   const convDoc = await convRef.get();

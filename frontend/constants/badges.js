@@ -1,5 +1,5 @@
-// Display-only mirror of backend/config/badges.js (thresholds must stay in sync).
-// icon/iconLib pick which @expo/vector-icons set profile.js should render with.
+// Display-only mirror of backend/config/badges.js (thresholds must stay in sync)
+// icon/iconLib pick which @expo/vector-icons set profile.js should render with
 export const TIER_ORDER = ['bronze', 'silver', 'gold'];
 
 export const TIER_COLORS = {
@@ -9,6 +9,7 @@ export const TIER_COLORS = {
   locked: { border: '#CCC', background: '#F9F9F9', icon: '#666' },
 };
 
+// Badge categories and thresholds for each tier
 export const BADGE_CATEGORIES = [
   {
     key: 'likesReceived',
@@ -80,7 +81,7 @@ export const BADGE_CATEGORIES = [
   },
 ];
 
-// Highest unlocked tier for a category, or null if locked. `badges` is profile.badges from Firestore.
+// Highest unlocked tier for a category, or null if locked. `badges` is profile.badges from Firestore
 export const getUnlockedTier = (categoryKey, badges = []) => {
   const entries = badges.filter((b) => b.category === categoryKey);
   if (entries.length === 0) return null;
@@ -90,7 +91,7 @@ export const getUnlockedTier = (categoryKey, badges = []) => {
     .sort((a, b) => TIER_ORDER.indexOf(b) - TIER_ORDER.indexOf(a))[0];
 };
 
-// Short progress string shown under a locked/in-progress badge, e.g. "7/10 to Bronze".
+// Short progress string shown under a locked/in-progress badge, e.g. "7/10 to Bronze"
 export const getProgressText = (category, badgeCounts = {}, unlockedTier) => {
   if (category.tiers.length === 0) {
     return unlockedTier ? 'Unlocked' : 'Not yet unlocked';

@@ -13,6 +13,7 @@ function getRelativeTime(timeData) {
     date = new Date(timeData); 
   }
 
+  // Handle invalid date
   if (isNaN(date.getTime())) return 'Just now';
 
   const diff = Date.now() - date.getTime();

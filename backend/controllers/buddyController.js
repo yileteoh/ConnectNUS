@@ -41,6 +41,7 @@ const getRecommendations = async (req, res) => {
         score += (sharedInterests.length * 2);
         commonTags.push(...sharedInterests);
 
+        // Sort commonTags alphabetically and remove duplicates
         recommendations.push({
           id: doc.id,
           ...peerData,
@@ -68,9 +69,11 @@ const sendBuddyRequest = async (req, res) => {
     const senderDoc = await db.collection('users').doc(senderId).get();
     const receiverDoc = await db.collection('users').doc(receiverId).get();
 
+    // Ensure both users exist
     if (senderDoc.data().currentBuddyId) return res.status(400).json({ error: 'You already have a buddy.' });
     if (receiverDoc.data().currentBuddyId) return res.status(400).json({ error: 'This person already has a buddy.' });
 
+    // Check if the receiver is currently accepting buddy requests
     if (receiverDoc.data().buddyStatus === false) {
       return res.status(403).json({ error: 'This user is currently not accepting buddy requests.' });
     }

@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
+// Backend URL from Expo config
 const BASE_URL = Constants.expoConfig?.extra?.backendUrl || 'http://YOUR_LOCAL_IP:3000';
 
 export const emptyProfile = {
@@ -17,6 +18,7 @@ export const emptyProfile = {
   setupComplete: false,
 };
 
+// Helper function to normalize list-like fields (modules, interests, socialLinks) into arrays
 const normalizeList = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item).trim()).filter(Boolean);
@@ -30,6 +32,7 @@ const normalizeList = (value) => {
 
 const profileSetupCacheKey = (userId) => `profileSetupComplete:${userId}`;
 
+// Normalize a profile object to ensure it has all expected fields and correct types
 export const normalizeProfile = (profile = {}) => ({
   ...emptyProfile,
   ...profile,
@@ -39,6 +42,7 @@ export const normalizeProfile = (profile = {}) => ({
   socialLinks: normalizeList(profile.socialLinks || profile.socialLinksList),
 });
 
+// Fetch the user's profile from the backend API and normalize it
 export const getUserProfile = async (userId) => {
   try {
     const response = await fetch(`${BASE_URL}/api/profile/${userId}`, {
@@ -64,15 +68,18 @@ export const getUserProfile = async (userId) => {
   }
 };
 
+// Check if the profile setup is complete for a given userId
 export const getCachedProfileSetupComplete = async (userId) => {
   const cachedValue = await AsyncStorage.getItem(profileSetupCacheKey(userId));
   return cachedValue === 'true';
 };
 
+// Set the profile setup completion status in AsyncStorage for a given userId
 export const setCachedProfileSetupComplete = async (userId, isComplete) => {
   await AsyncStorage.setItem(profileSetupCacheKey(userId), isComplete ? 'true' : 'false');
 };
 
+// Update the user's profile via the backend API and cache the setup completion status
 export const updateUserProfile = async (userId, profileData) => {
   try {
     const normalizedProfile = normalizeProfile(profileData);
@@ -105,6 +112,7 @@ export const updateUserProfile = async (userId, profileData) => {
   }
 };
 
+// Validate if a given string is a valid HTTP or HTTPS URL
 export const isValidHttpUrl = (value) => {
   if (!value) return true;
 

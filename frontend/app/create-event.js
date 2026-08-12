@@ -21,6 +21,7 @@ import { auth } from '../firebaseConfig';
 import { createNewEvent } from '../services/eventService';
 import { EVENT_CATEGORIES } from '../constants/eventOptions';
 
+// CreateEventScreen component
 export default function CreateEventScreen() {
   const router = useRouter();
 
@@ -43,6 +44,7 @@ export default function CreateEventScreen() {
       setShowPicker(false);
     }
     
+    // Guard clause to prevent null values when user cancels the picker
     if (!selectedDate) return;
 
     setDate(selectedDate);
@@ -71,6 +73,7 @@ export default function CreateEventScreen() {
       return;
     }
 
+    // Validate that the selected date and time is in the future
     const selectedTimeMs = new Date(isoTime).getTime();
     const currentTimeMs = Date.now();
     if (selectedTimeMs <= currentTimeMs) {
@@ -78,11 +81,13 @@ export default function CreateEventScreen() {
       return;
     }
 
+    // Validate that the capacity is a number greater than 1
     if (isNaN(capNumber) || capNumber <= 1) {
       Alert.alert('Invalid Capacity', 'An event must have at least 2 slots (including yourself).');
       return;
     }
 
+    // Set submitting state to true to show loading indicator
     setSubmitting(true);
     try {
       const transmissionPayload = {

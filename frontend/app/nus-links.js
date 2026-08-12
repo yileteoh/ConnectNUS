@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+// NusLinksScreen component that displays a list of NUS-specific quick links with logos and descriptions
 export default function NusLinksScreen() {
   const router = useRouter();
 

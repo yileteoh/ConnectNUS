@@ -14,6 +14,7 @@ import {
 import { sendNotification } from '../../services/notificationHelper';
 import { getUserProfile } from '../../services/profileService';
 
+// Utility function to convert Firestore timestamp to relative time
 const getRelativeTime = (timeData) => {
   if (!timeData) return 'Just now';
   let date;
@@ -30,6 +31,7 @@ const getRelativeTime = (timeData) => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
+// Utility function to convert Firestore timestamp to milliseconds
 const toMillis = (timeData) => {
   if (!timeData) return 0;
   if (timeData._seconds) return timeData._seconds * 1000;
@@ -56,6 +58,7 @@ export default function ForumDetailsScreen() {
 
   const currentUserId = auth.currentUser?.uid;
 
+  // Fetch post details and comments when the component mounts or when the post ID changes
   const fetchPostAndComments = useCallback(async () => {
     try {
       const [postData, commentsData] = await Promise.all([
@@ -71,6 +74,7 @@ export default function ForumDetailsScreen() {
     }
   }, [id, router]);
 
+  // Use useFocusEffect to refetch data when the screen gains focus
   useFocusEffect(useCallback(() => { fetchPostAndComments(); }, [fetchPostAndComments]));
 
   const handleProfileNav = (targetUid) => {
@@ -78,6 +82,7 @@ export default function ForumDetailsScreen() {
     else router.push(`/user/${targetUid}`);
   };
 
+  // Handle Like Toggle for the Post
   const handleToggleLike = async () => {
     if (!currentUserId || !post) return;
     const hasLiked = post.likes?.includes(currentUserId);
@@ -103,6 +108,7 @@ export default function ForumDetailsScreen() {
     catch (error) { fetchPostAndComments(); }
   };
 
+  // Handle Post Deletion
   const handlePostDelete = () => {
     Alert.alert('Delete Post', 'This will permanently erase your thread.', [
       { text: 'Cancel', style: 'cancel' },
@@ -222,6 +228,7 @@ export default function ForumDetailsScreen() {
     }
   };
 
+  // Save Edited Comment
   const saveCommentEdit = async (commentId) => {
     if (!editCommentText.trim()) return;
     try {
@@ -231,6 +238,7 @@ export default function ForumDetailsScreen() {
     } catch (error) { Alert.alert('Error', error.message); }
   };
 
+  // Show a loading indicator while fetching post and comments
   if (loading || !post) {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -242,6 +250,7 @@ export default function ForumDetailsScreen() {
   const isLiked = post.likes?.includes(currentUserId);
   const isPostCreator = post.creatorId === currentUserId;
 
+  // Render the Post Header with Author Info, Title, Content, and Action Buttons
   const PostHeader = () => (
     <View style={styles.postBodyCard}>
       <View style={styles.authorMetaRow}>
@@ -413,6 +422,8 @@ const styles = StyleSheet.create({
   backButton: { padding: 4 },
   headerIcon: { padding: 4, marginLeft: 12 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#002D5B', position: 'absolute', left: 0, right: 0, textAlign: 'center' },
+
+  // Post Styles
   listContent: { paddingBottom: 20 },
   postBodyCard: { backgroundColor: '#FFFFFF', padding: 20, marginBottom: 10 },
   authorMetaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

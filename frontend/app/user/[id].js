@@ -21,6 +21,7 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const currentUserId = auth.currentUser?.uid;
 
+  // State variables for profile data and loading state
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +30,7 @@ export default function PublicProfileScreen() {
   const [requestId, setRequestId] = useState(null); 
   const [processing, setProcessing] = useState(false);
 
+  // Fetch the peer's profile data and relationship status when the component mounts
   useEffect(() => {
     const loadPeerProfile = async () => {
       try {
@@ -56,6 +58,7 @@ export default function PublicProfileScreen() {
   // Send Request
   const handleSendRequest = async () => {
     setProcessing(true);
+    // Send a buddy request to the peer and update the relationship status
     try {
       const result = await sendBuddyRequest(currentUserId, id);
       if (result.requestId) {
@@ -83,6 +86,7 @@ export default function PublicProfileScreen() {
   // Accept Request
   const handleAcceptRequest = async () => {
     setProcessing(true);
+    // Accept the incoming buddy request and update the relationship status
     try {
       await acceptBuddyRequest(requestId, id, currentUserId);
       setRelationStatus('buddies');
@@ -104,6 +108,7 @@ export default function PublicProfileScreen() {
     }
   };
 
+  // Decline Request
   const handleDeclineRequest = async () => {
     Alert.alert('Decline Request', 'Are you sure you want to decline this buddy request?', [
       { text: 'Cancel', style: 'cancel' },
@@ -131,6 +136,7 @@ export default function PublicProfileScreen() {
     ]);
   };
 
+  // Cancel Request
   const handleCancelRequest = async () => {
     setProcessing(true);
     try {
@@ -230,6 +236,7 @@ const handleOpenLink = async (rawUrl) => {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = `https://${url}`;
     }
+    // Attempt to open the link in the device's default browser
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) await Linking.openURL(url);
@@ -238,6 +245,7 @@ const handleOpenLink = async (rawUrl) => {
     }
   };
 
+  // Determine the platform configuration (icon, color, label) based on the social link URL
   const getPlatformConfig = (url) => {
     const lowerUrl = url.toLowerCase();
     
@@ -257,6 +265,7 @@ const handleOpenLink = async (rawUrl) => {
     return { icon: 'link-outline', color: '#002D5B', label: 'Website' };
   };
 
+  // Show a loading indicator while fetching profile data
   if (loading) {
     return (
       <SafeAreaView style={styles.centerContainer}>

@@ -40,6 +40,7 @@ const getRelativeTime = (timeData) => {
   return `${Math.floor(hours / 24)}d ago`;
 };
 
+// Convert Firestore timestamp to milliseconds for comparison
 const toMillis = (timeData) => {
   if (!timeData) return 0;
   if (timeData._seconds) return timeData._seconds * 1000;
@@ -48,8 +49,10 @@ const toMillis = (timeData) => {
   return isNaN(date.getTime()) ? 0 : date.getTime();
 };
 
+// Determine if a post was edited based on its timestamps
 const wasEdited = (item) => toMillis(item.updatedAt) > toMillis(item.createdAt);
 
+// MyDiscussionsScreen component
 export default function MyDiscussionsScreen() {
   const router = useRouter();
   
@@ -78,6 +81,7 @@ export default function MyDiscussionsScreen() {
     }
   };
 
+  // Use useFocusEffect to reload discussions when the screen is focused
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -85,11 +89,13 @@ export default function MyDiscussionsScreen() {
     }, [])
   );
 
+  // Refresh handler for pull-to-refresh functionality
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadMyDiscussions();
   }, []);
 
+  // Handle toggling like for a post with optimistic UI update
   const handleToggleLike = async (postId) => {
     if (!currentUserId) return;
 
@@ -217,6 +223,7 @@ export default function MyDiscussionsScreen() {
   );
 }
 
+// Stylesheet mapping
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FAFAFA', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   headerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 15, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#EAEAEA' },

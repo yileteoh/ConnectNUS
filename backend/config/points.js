@@ -1,5 +1,4 @@
-// Single source of truth for point values and level thresholds.
-// Mirrored (display-only) in frontend/constants/points.js.
+// Single source of truth for point values and level thresholds
 module.exports = {
   POINT_VALUES: {
     likeReceived: 2,

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const profileController = require('../controllers/profileController');
 
+// Profile routes
 router.post('/register', profileController.registerUser);
 router.put('/profile', profileController.updateProfile);
 router.get('/profile/:userId', profileController.getProfile);

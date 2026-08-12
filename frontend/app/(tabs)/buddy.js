@@ -28,6 +28,7 @@ export default function BuddyScreen() {
   const router = useRouter();
   const currentUserId = auth.currentUser?.uid;
 
+  // State variables for managing buddy recommendations, pending requests, and user profile
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,6 +103,7 @@ export default function BuddyScreen() {
     return matchesSearch && matchesFaculty;
   });
 
+  // Render loading state while fetching data
   if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -160,6 +162,7 @@ export default function BuddyScreen() {
     );
   }
 
+// Rendered if user has opted out of Buddy Matching
 if (optedOut) {
     return (
       <SafeAreaView style={styles.safeArea}>

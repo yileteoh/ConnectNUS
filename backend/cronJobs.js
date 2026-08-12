@@ -15,6 +15,7 @@ const sendExpoPushNotification = async (expoPushToken, title, body, data) => {
     data: data,
   };
 
+  // Send the push notification using Expo's push notification service
   try {
     await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
@@ -44,9 +45,9 @@ const sendSystemNotification = async (userId, title, body, type, referenceId) =>
   }
 };
 
-// Function to start all CRON jobs. node-cron's schedule() starts the timer
-// immediately, so these are only created here instead of at module load,
-// keeping `require('./cronJobs')` (e.g. from tests) side-effect free.
+/* Function to start all CRON jobs. Node-cron's schedule() starts the timer
+immediately, so these are only created here instead of at module load,
+keeping `require('./cronJobs')` (e.g. from tests) side-effect free */
 const startAllCronJobs = () => {
   // Alerts attendees if their event starts in exactly 24 hours
   cron.schedule('0 * * * *', async () => {

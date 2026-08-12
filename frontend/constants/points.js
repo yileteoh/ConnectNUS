@@ -1,4 +1,4 @@
-// Display-only mirror of backend/config/points.js (thresholds must stay in sync).
+// Display-only mirror of backend/config/points.js
 export const LEVELS = [
   { level: 1, title: 'Freshie', threshold: 0 },
   { level: 2, title: 'Familiar Face', threshold: 50 },
@@ -8,7 +8,7 @@ export const LEVELS = [
   { level: 6, title: 'NUS Legend', threshold: 1500 },
 ];
 
-// Returns the current level plus progress toward the next one (or null nextLevel if maxed).
+// Returns the current level plus progress toward the next one.
 export const getLevel = (points = 0) => {
   let current = LEVELS[0];
   let currentIndex = 0;
@@ -19,6 +19,7 @@ export const getLevel = (points = 0) => {
     }
   });
 
+  // Determine the next level and calculate progress toward it
   const nextLevel = LEVELS[currentIndex + 1] || null;
   const progress = nextLevel
     ? (points - current.threshold) / (nextLevel.threshold - current.threshold)

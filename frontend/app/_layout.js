@@ -12,11 +12,13 @@ import {
 } from '../services/profileService';
 import { registerForPushNotificationsAsync } from '../services/notificationHelper';
 
+// Suppress specific Firebase permission warnings in the console
 LogBox.ignoreLogs(['FirebaseError: Missing or insufficient permissions']);
 
 // Create a global AuthContext to share the profile setup state across screens
 export const AuthContext = createContext();
 
+// RootLayout component manages authentication state and routing logic
 export default function RootLayout() {
   const [initializing, setInitializing] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
@@ -31,6 +33,7 @@ export default function RootLayout() {
     // Capture uid now — auth.currentUser will be null by the time the cleanup runs on logout
     const uid = user.uid;
 
+    // Initialize user session in Firestore and register for push notifications
     const initializeUserSession = async () => {
       try {
         await setDoc(doc(db, 'users', uid), {
@@ -49,18 +52,21 @@ export default function RootLayout() {
 
     initializeUserSession();
 
+    // Set up a periodic ping to update the user's online status every 2 minutes
     const pingInterval = setInterval(async () => {
       try {
         await setDoc(doc(db, 'users', uid), { isOnline: true, lastSeen: serverTimestamp() }, { merge: true });
       } catch (_e) {}
     }, 2 * 60 * 1000);
 
+    // Set up an AppState listener to update online status when the app goes to background or foreground
     const subscription = AppState.addEventListener('change', async (state) => {
       try {
         await setDoc(doc(db, 'users', uid), { isOnline: state === 'active' }, { merge: true });
       } catch (_e) {}
     });
     
+    // Cleanup function to clear the interval and remove the AppState listener when the component unmounts or user logs out
     return () => {
       clearInterval(pingInterval);
       setDoc(doc(db, 'users', uid), { isOnline: false }, { merge: true }).catch(() => {});
@@ -79,6 +85,7 @@ export default function RootLayout() {
         return;
       }
 
+      // Check if the user's profile setup is complete, using cached data first for performance
       try {
         const cachedComplete = await getCachedProfileSetupComplete(authenticatedUser.uid);
 
@@ -120,7 +127,7 @@ export default function RootLayout() {
     } else if (user && profileComplete && (inAuthGroup || inProfileSetup)) {
       router.replace('/(tabs)/home');
     } else if (!user && !inAuthGroup) {
-      // If NOT logged in and trying to access tabs, redirect to login
+      // If not logged in and trying to access tabs, redirect to login
       router.replace('/');
     }
   }, [user, profileComplete, initializing, segments, router]);

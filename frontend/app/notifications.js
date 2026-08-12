@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 
+// NotificationsScreen component that fetches and displays user notifications in real-time
 export default function NotificationsScreen() {
   const router = useRouter();
   const currentUserId = auth.currentUser?.uid;
@@ -19,12 +20,14 @@ export default function NotificationsScreen() {
   useEffect(() => {
     if (!currentUserId) return;
 
+    // Query to fetch notifications for the current user
     const q = query(
       collection(db, 'notifications'),
       where('userId', '==', currentUserId),
       orderBy('createdAt', 'desc')
     );
 
+    // Set up a real-time listener for notifications
     const unsub = onSnapshot(q, (snap) => {
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setNotifications(docs);
@@ -100,6 +103,7 @@ export default function NotificationsScreen() {
     }
   };
 
+  // Render each notification item in the FlatList
   const renderItem = ({ item }) => {
     const { name, color } = getNotificationIcon(item.type);
     

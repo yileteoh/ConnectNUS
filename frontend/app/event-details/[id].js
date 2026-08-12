@@ -29,6 +29,7 @@ export default function EventDetailsScreen() {
   
   const currentUserId = auth.currentUser?.uid;
 
+  // Fetch event details from the backend
   const fetchDetails = useCallback(async () => {
     try {
       const data = await getEventDetails(id);
@@ -165,6 +166,7 @@ export default function EventDetailsScreen() {
     }
   };
 
+  // Conditional Rendering Logic
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -175,6 +177,7 @@ export default function EventDetailsScreen() {
 
   if (!event) return null;
 
+  // Determine user roles and event status
   const currentAttendees = event.attendees || [];
   const hasJoined = currentAttendees.some(attendee => attendee.uid === currentUserId);
   const isCreator = event.creatorId === currentUserId; // Validate roles mapping
@@ -376,6 +379,7 @@ const styles = StyleSheet.create({
   avatarPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#A8C5E6', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
   avatarText: { color: '#FFF', fontSize: 12, fontWeight: 'bold' },
   attendeeNameLabel: { fontSize: 11, color: '#555555', textAlign: 'center', marginTop: 4, fontWeight: '500', width: 55, marginLeft: -3 },
+  // Avatar Styles
   avatarCircleFrame: { 
     width: 50, 
     height: 50, 

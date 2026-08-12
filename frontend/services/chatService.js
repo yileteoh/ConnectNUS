@@ -1,3 +1,4 @@
+// frontend/services/chatService.js
 import Constants from 'expo-constants';
 import { io } from 'socket.io-client';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -7,7 +8,7 @@ const CLOUDINARY_UPLOAD_PRESET = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESE
 
 const BASE_URL = Constants.expoConfig?.extra?.backendUrl;
 
-// Ensure a group chat conversation exists for an event; creates it if missing and adds the caller
+// Ensure a group chat conversation exists for an event, creates it if missing and adds the caller
 export const ensureGroupConversation = async (eventId, eventTitle, userId, userName, userProfilePic) => {
   const response = await fetch(`${BASE_URL}/api/chat/group/${eventId}`, {
     method: 'POST',
@@ -35,7 +36,7 @@ export const getOrCreateConversation = async (userId1, userId2) => {
   }
 };
 
-// Load the inbox — all conversations this user is part of
+// Load the inbox: all conversations this user is part of
 export const getConversations = async (userId) => {
   try {
     const response = await fetch(`${BASE_URL}/api/chat/conversations/${userId}`);
@@ -47,7 +48,7 @@ export const getConversations = async (userId) => {
   }
 };
 
-// Load full message history for a conversation (called when opening a chat room)
+// Load full message history for a conversation
 export const getMessages = async (conversationId) => {
   try {
     const response = await fetch(`${BASE_URL}/api/chat/messages/${conversationId}`);
@@ -60,7 +61,7 @@ export const getMessages = async (conversationId) => {
 };
 
 // Socket.io helpers
-// Single shared socket instance — created once, reused across screens
+// Single shared socket instance: created once, reused across screens
 let socket = null;
 
 // Connect to the backend Socket.io server (call once when entering any chat screen)
@@ -103,7 +104,7 @@ export const uploadImage = async (localUri) => {
   return result.secure_url;
 };
 
-// Listen for incoming messages — returns an unsubscribe function to clean up on unmount
+// Listen for incoming messages: returns an unsubscribe function to clean up on unmount
 export const onMessage = (callback) => {
   if (socket) {
     socket.on('receive_message', callback);
@@ -117,7 +118,6 @@ export const onMessage = (callback) => {
 };
 
 // Broadcast an image message to other room members — no server-side Firestore save
-// (the client saves directly to Firestore before calling this)
 export const broadcastImage = (conversationId, senderId, imageUrl, messageId, timestamp) => {
   if (socket) {
     socket.emit('broadcast_image', { conversationId, senderId, imageUrl, messageId, timestamp });
@@ -125,19 +125,20 @@ export const broadcastImage = (conversationId, senderId, imageUrl, messageId, ti
 };
 
 // Broadcast a reply-text message to other room members — no server-side Firestore save
-// (the client saves directly to Firestore before calling this)
 export const broadcastText = (conversationId, senderId, text, messageId, timestamp, replyTo) => {
   if (socket) {
     socket.emit('broadcast_text', { conversationId, senderId, text, messageId, timestamp, replyTo });
   }
 };
 
-// Upload a document to Cloudinary and return its URL.
-// Images go to image/upload (renders correctly). Everything else (PDF, DOCX, etc.)
-// goes to raw/upload which preserves the original bytes — image/upload corrupts PDFs
-// by storing a rasterized rendition instead of the original file.
-// Base64 read is required because RN fetch FormData does not reliably send
-// DocumentPicker URIs as binary (results in 0-byte uploads).
+/* 
+Upload a document to Cloudinary and return its URL.
+Images go to image/upload (renders correctly). Everything else (PDF, DOCX, etc.)
+goes to raw/upload which preserves the original bytes — image/upload corrupts PDFs
+by storing a rasterized rendition instead of the original file.
+Base64 read is required because RN fetch FormData does not reliably send
+DocumentPicker URIs as binary (results in 0-byte uploads). 
+*/
 export const uploadDocument = async (localUri, fileName, mimeType) => {
   const resourceType = mimeType?.startsWith('image/') ? 'image' : 'raw';
 
@@ -147,10 +148,12 @@ export const uploadDocument = async (localUri, fileName, mimeType) => {
     const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: 'base64' });
     formData.append('file', `data:${mimeType || 'image/jpeg'};base64,${base64}`);
   } else {
-    // Non-image files: use the file URI directly so Cloudinary stores opaque bytes.
-    // Sending as a base64 data URI causes Cloudinary to inspect ZIP magic bytes in
-    // DOCX/XLSX files, extract internal paths like "word/document.xml", and reject
-    // with "Display name cannot contain slashes".
+    /* 
+    Non-image files: use the file URI directly so Cloudinary stores opaque bytes.
+    Sending as a base64 data URI causes Cloudinary to inspect ZIP magic bytes in
+    DOCX/XLSX files, extract internal paths like "word/document.xml", and reject
+    with "Display name cannot contain slashes".
+    */
     formData.append('file', { uri: localUri, type: 'application/octet-stream', name: 'upload' });
   }
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
@@ -168,7 +171,7 @@ export const uploadDocument = async (localUri, fileName, mimeType) => {
   return result.secure_url;
 };
 
-// Broadcast a document message to other room members — no server-side Firestore save
+// Broadcast a document message to other room members: no server-side Firestore save
 export const broadcastDocument = (conversationId, senderId, documentUrl, documentName, messageId, timestamp) => {
   if (socket) {
     socket.emit('broadcast_document', { conversationId, senderId, documentUrl, documentName, messageId, timestamp });

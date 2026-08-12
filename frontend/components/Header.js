@@ -6,10 +6,12 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { useRouter } from 'expo-router';
 
+// Header component with optional settings button or notifications bell with unread badge
 export default function Header({ showSettings, onSettingsPress, onNotificationPress }) {
   const [hasUnread, setHasUnread] = useState(false);
   const router = useRouter();
 
+  // Listen for unread notifications in real-time and update the badge state
   useEffect(() => {
     let unsubSnap = () => {};
     const unsubAuth = onAuthStateChanged(auth, (user) => {
@@ -37,6 +39,7 @@ export default function Header({ showSettings, onSettingsPress, onNotificationPr
     router.push('/notifications');
   };
 
+  // Render the header with logo and either settings button or notifications bell
   return (
     <View style={styles.headerContainer}>
       <Image
@@ -61,6 +64,7 @@ export default function Header({ showSettings, onSettingsPress, onNotificationPr
   );
 }
 
+// Styles for the header component
 const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
